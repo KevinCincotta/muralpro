@@ -1,98 +1,175 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as fabric from "fabric"; // Use wildcard import for fabric.js
+import * as fabric from "fabric";
 
-function Setup({ onSelection }) {
+function Setup({ onImageLoad, onSelection }) {
   const canvasRef = useRef(null);
-  const [fabricCanvas, setFabricCanvas] = useState(null);
-  const [image, setImage] = useState(null);
-  const [selectionRect, setSelectionRect] = useState(null);
+  const fabricCanvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const [scaleFactor, setScaleFactor] = useState(1);
 
   useEffect(() => {
-    // Initialize fabric.js canvas
-    const canvas = new fabric.Canvas(canvasRef.current, {
+    const canvasElement = canvasRef.current;
+    if (!canvasElement) {
+      console.error("Canvas element not found");
+      return;
+    }
+
+    const canvas = new fabric.Canvas(canvasElement, {
       selection: false,
+      preserveObjectStacking: true,
     });
-    setFabricCanvas(canvas);
+    fabricCanvasRef.current = canvas;
+    console.log("Fabric canvas initialized:", canvas);
 
     return () => {
       canvas.dispose();
+      console.log("Fabric canvas disposed");
     };
   }, []);
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setImage(url);
-
-      // Wait for fabricCanvas to be initialized before adding the image
-      if (fabricCanvas) {
-        fabric.Image.fromURL(url, (img) => {
-          img.set({ selectable: false });
-          fabricCanvas.clear();
-          fabricCanvas.setWidth(img.width);
-          fabricCanvas.setHeight(img.height);
-          fabricCanvas.add(img);
-          fabricCanvas.renderAll();
-        });
-      } else {
-        console.error("Fabric canvas is not initialized.");
-      }
+    if (!file) {
+      console.error("No file selected");
+      return;
     }
-  };
 
-  const addSelectionRectangle = () => {
-    if (selectionRect || !fabricCanvas) return; // Prevent adding multiple rectangles
+    const url = URL.createObjectURL(file);
+    console.log("Image URL created:", url);
+    onImageLoad(url);
 
-    // Add a rectangle with 16:9 aspect ratio
-    const rect = new fabric.Rect({
-      left: 50,
-      top: 50,
-      width: 160,
-      height: 90,
-      fill: "rgba(0, 0, 0, 0.3)",
-      stroke: "red",
-      strokeWidth: 2,
-      selectable: true,
-      hasControls: true,
-    });
+    const fabricCanvas = fabricCanvasRef.current;
+    if (!fabricCanvas) {
+      console.error("Fabric canvas not initialized yet");
+      return;
+    }
 
-    // Enforce 16:9 aspect ratio during resizing
-    rect.on("scaling", () => {
-      const scaleX = rect.scaleX;
-      rect.set({
-        scaleY: scaleX * (9 / 16),
-        scaleX: scaleX, // Keep scaleX unchanged
+    const imgElement = new Image();
+    imgElement.src = url;
+    imgElement.onload = () => {
+      console.log("Image pre-loaded successfully:", imgElement.width, "x", imgElement.height);
+
+      const containerWidth = containerRef.current.offsetWidth;
+      const imageWidth = imgElement.width;
+      const scale = containerWidth / imageWidth;
+      setScaleFactor(scale);
+      console.log("Scale factor calculated:", scale);
+
+      const img = new fabric.Image(imgElement, {
+        selectable: false,
+        scaleX: scale,
+        scaleY: scale,
       });
-      rect.setCoords(); // Update the rectangle's coordinates
-    });
 
-    // Update selection in real-time
-    rect.on("modified", () => {
-      const { left, top, width, height, scaleX, scaleY } = rect;
+      if (!img.width || !img.height) {
+        console.error("Image failed to initialize in Fabric.js:", img);
+        return;
+      }
+
+      console.log("Image initialized in Fabric.js:", img.width, "x", img.height);
+      fabricCanvas.clear();
+
+      const scaledWidth = imgElement.width * scale;
+      const scaledHeight = imgElement.height * scale;
+      fabricCanvas.setWidth(scaledWidth);
+      fabricCanvas.setHeight(scaledHeight);
+      canvasRef.current.width = scaledWidth;
+      canvasRef.current.height = scaledHeight;
+      console.log("Canvas resized to:", scaledWidth, "x", scaledHeight);
+
+      fabricCanvas.add(img);
+      fabricCanvas.renderAll();
+      console.log("Image added to canvas and rendered");
+
+      // Calculate maximum 16:9 rectangle fitting within the image
+      const imgWidth = imgElement.width;
+      const imgHeight = imgElement.height;
+      let rectWidth = imgWidth;
+      let rectHeight = (rectWidth * 9) / 16;
+      if (rectHeight > imgHeight) {
+        rectHeight = imgHeight;
+        rectWidth = (rectHeight * 16) / 9;
+      }
+      console.log("Calculated max rectangle (unscaled):", { width: rectWidth, height: rectHeight });
+
+      // Scale the rectangle dimensions
+      const scaledRectWidth = rectWidth * scale;
+      const scaledRectHeight = rectHeight * scale;
+
+      const rect = new fabric.Rect({
+        left: 0,
+        top: scaledHeight - scaledRectHeight,
+        width: scaledRectWidth,
+        height: scaledRectHeight,
+        fill: "rgba(0, 0, 255, 0.2)",
+        stroke: "blue",
+        strokeWidth: 2 / scale,
+        selectable: true,
+        hasControls: true,
+        lockUniScaling: true,
+      });
+      console.log("Rectangle created (scaled):", {
+        left: 0,
+        top: scaledHeight - scaledRectHeight,
+        width: scaledRectWidth,
+        height: scaledRectHeight,
+        strokeWidth: 2 / scale,
+      });
+
+      rect.on("modified", () => {
+        const { left, top, width, scaleX } = rect;
+        const newWidth = width * scaleX;
+        const newHeight = (newWidth * 9) / 16;
+        rect.set({
+          height: newHeight / scaleX,
+          scaleY: scaleX,
+        });
+        rect.setCoords();
+
+        const adjustedSelection = {
+          x: left / scale,
+          y: top / scale,
+          width: newWidth / scale,
+          height: newHeight / scale,
+        };
+        console.log("Rectangle modified (adjusted):", adjustedSelection);
+        onSelection(adjustedSelection);
+      });
+
+      fabricCanvas.add(rect);
+      fabricCanvas.setActiveObject(rect);
+      fabricCanvas.renderAll();
+      console.log("Rectangle added and rendered");
+
       onSelection({
-        x: left,
-        y: top,
-        width: width * scaleX,
-        height: height * scaleY,
-        image,
+        x: 0,
+        y: (scaledHeight - scaledRectHeight) / scale,
+        width: rectWidth,
+        height: rectHeight,
       });
-    });
-
-    fabricCanvas.add(rect);
-    fabricCanvas.setActiveObject(rect);
-    fabricCanvas.renderAll();
-    setSelectionRect(rect);
+    };
+    imgElement.onerror = (err) => {
+      console.error("Error pre-loading image:", err);
+    };
   };
 
   return (
     <div>
       <h2>Setup</h2>
       <input type="file" accept="image/*" onChange={handleImageUpload} />
-      <button onClick={addSelectionRectangle} disabled={!image || selectionRect}>
-        Add Selection Rectangle
-      </button>
-      <canvas ref={canvasRef} style={{ border: "1px solid black" }}></canvas>
+      <div
+        ref={containerRef}
+        style={{
+          maxWidth: "100%",
+          overflowX: "auto",
+          marginTop: "10px",
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          style={{ border: "1px solid black" }}
+        />
+      </div>
     </div>
   );
 }
