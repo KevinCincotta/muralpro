@@ -6,37 +6,22 @@ import ReactDOM from "react-dom/client";
 function App() {
   const [image, setImage] = useState(null);
   const [selection, setSelection] = useState(null);
-  const displayWindowRef = useRef(null); // Use ref to persist window reference
+  const displayWindowRef = useRef(null);
 
-  const sendMessageToDisplay = (message, attempts = 5, delay = 200) => {
-    if (attempts <= 0) {
-      console.error("Failed to send message to Display after retries:", message);
-      return;
-    }
-
+  const sendMessageToDisplay = (message) => {
     const displayWindow = displayWindowRef.current;
     if (displayWindow && !displayWindow.closed) {
-      console.log("Sending postMessage from App (attempt", 6 - attempts, "):", message);
       displayWindow.postMessage(message, "*");
-    } else {
-      console.log("Display window not available, retrying in", delay, "ms...");
-      setTimeout(() => sendMessageToDisplay(message, attempts - 1, delay), delay);
     }
   };
 
   const handleSelection = (newSelection) => {
     setSelection(newSelection);
-    const displayWindow = displayWindowRef.current;
-    if (!displayWindow || displayWindow.closed) {
-      console.log("Display window not open, skipping message send");
-      return;
-    }
-    const message = {
+    sendMessageToDisplay({
       messageType: "MuralProUpdate",
       image,
       selection: newSelection,
-    };
-    sendMessageToDisplay(message);
+    });
   };
 
   const openDisplayWindow = () => {
@@ -51,7 +36,6 @@ function App() {
       return;
     }
 
-    console.log("Display window opened:", newWindow);
     newWindow.document.body.style.margin = "0";
     newWindow.document.body.style.overflow = "hidden";
     newWindow.document.body.innerHTML = `<div id="display-root"></div>`;
@@ -69,31 +53,23 @@ function App() {
         initialSelection={selection}
       />
     );
-    console.log("Rendered Display component in new window");
     displayWindowRef.current = newWindow;
 
-    // Send initial message after a longer delay to ensure the listener is set up
-    setTimeout(() => {
-      const initialMessage = {
-        messageType: "MuralProUpdate",
-        image,
-        selection,
-      };
-      sendMessageToDisplay(initialMessage);
-    }, 2000); // Increased delay to 2000ms
+    // Send initial message to the Display window
+    sendMessageToDisplay({
+      messageType: "MuralProUpdate",
+      image,
+      selection,
+    });
   };
 
-  // Detect when the Display window is closed
   useEffect(() => {
-    const checkWindowClosed = () => {
+    const interval = setInterval(() => {
       const displayWindow = displayWindowRef.current;
       if (displayWindow && displayWindow.closed) {
-        console.log("Display window closed, clearing reference");
         displayWindowRef.current = null;
       }
-    };
-
-    const interval = setInterval(checkWindowClosed, 1000);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 

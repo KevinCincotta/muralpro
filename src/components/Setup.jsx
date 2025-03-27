@@ -136,6 +136,36 @@ function Setup({ onImageLoad, onSelection }) {
         onSelection(adjustedSelection);
       });
 
+      rect.on("moving", () => {
+        const { left, top, width, scaleX } = rect;
+        const newWidth = width * scaleX;
+        const newHeight = (newWidth * 9) / 16;
+
+        const adjustedSelection = {
+          x: left / scale,
+          y: top / scale,
+          width: newWidth / scale,
+          height: newHeight / scale,
+        };
+        console.log("Rectangle moved (adjusted):", adjustedSelection);
+        onSelection(adjustedSelection);
+      });
+
+      rect.on("scaling", () => {
+        const { left, top, width, scaleX } = rect;
+        const newWidth = width * scaleX;
+        const newHeight = (newWidth * 9) / 16;
+
+        const adjustedSelection = {
+          x: left / scale,
+          y: top / scale,
+          width: newWidth / scale,
+          height: newHeight / scale,
+        };
+        console.log("Rectangle scaled (adjusted):", adjustedSelection);
+        onSelection(adjustedSelection);
+      });
+
       fabricCanvas.add(rect);
       fabricCanvas.setActiveObject(rect);
       fabricCanvas.renderAll();

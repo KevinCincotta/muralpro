@@ -1,11 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 function Display({ initialImage, initialSelection }) {
   const canvasRef = useRef(null);
-  const [image, setImage] = React.useState(initialImage);
-  const [selection, setSelection] = React.useState(initialSelection);
-
-  console.log("Display component mounted with initial props:", { initialImage, initialSelection });
+  const [image, setImage] = useState(initialImage);
+  const [selection, setSelection] = useState(initialSelection);
 
   const updateCanvas = (imgSrc, sel) => {
     if (!imgSrc || !sel) {
@@ -45,10 +43,7 @@ function Display({ initialImage, initialSelection }) {
     };
   };
 
-  // Set up message listener
   useEffect(() => {
-    console.log("Setting up message listener in Display");
-
     const handleMessage = (event) => {
       const data = event.data;
       if (data.messageType !== "MuralProUpdate") {
@@ -70,13 +65,9 @@ function Display({ initialImage, initialSelection }) {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  // Update canvas when image or selection changes
   useEffect(() => {
-    console.log("Render effect in Display:", { image, selection });
     if (image && selection) {
       updateCanvas(image, selection);
-    } else {
-      console.log("Cannot render canvas: missing image or selection");
     }
   }, [image, selection]);
 
