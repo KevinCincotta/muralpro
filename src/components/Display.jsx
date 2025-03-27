@@ -44,30 +44,39 @@ function Display({ initialImage, initialSelection }) {
   };
 
   useEffect(() => {
+    // Initialize the BroadcastChannel
+    const channel = new BroadcastChannel("muralpro");
+
     const handleMessage = (event) => {
-      const data = event.data;
-      if (data.messageType !== "MuralProUpdate") {
-        console.log("Ignoring non-MuralPro message:", data);
+      const { image: newImage, selection: newSelection } = event.data;
+
+      // Ignore invalid messages
+      if (!newImage) {
+        console.warn("Invalid BroadcastChannel message data:", event.data);
         return;
       }
 
-      const { image: newImage, selection: newSelection } = data;
-      if (newImage && newSelection) {
-        console.log("Received MuralPro postMessage in Display:", { newImage, newSelection });
-        setImage(newImage);
-        setSelection(newSelection);
-      } else {
-        console.log("Invalid MuralPro postMessage data:", data);
-      }
+      console.log("Received BroadcastChannel message in Display:", { newImage, newSelection });
+      setImage(newImage);
+      setSelection(newSelection || null);
     };
 
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    channel.onmessage = handleMessage;
+
+    return () => {
+      // Close the BroadcastChannel when the component unmounts
+      channel.close();
+    };
   }, []);
 
   useEffect(() => {
     if (image && selection) {
       updateCanvas(image, selection);
+    } else if (image) {
+      console.log("Clearing canvas because no selection is available.");
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   }, [image, selection]);
 

@@ -7,21 +7,38 @@ function App() {
   const [image, setImage] = useState(null);
   const [selection, setSelection] = useState(null);
   const displayWindowRef = useRef(null);
+  const broadcastChannelRef = useRef(null);
 
-  const sendMessageToDisplay = (message) => {
-    const displayWindow = displayWindowRef.current;
-    if (displayWindow && !displayWindow.closed) {
-      displayWindow.postMessage(message, "*");
+  useEffect(() => {
+    // Initialize the BroadcastChannel
+    const channel = new BroadcastChannel("muralpro");
+    broadcastChannelRef.current = channel;
+
+    return () => {
+      // Close the BroadcastChannel when the component unmounts
+      channel.close();
+    };
+  }, []);
+
+  // Broadcast updates whenever `image` or `selection` changes
+  useEffect(() => {
+    if (image && selection) {
+      broadcastChannelRef.current?.postMessage({
+        image,
+        selection,
+      });
     }
-  };
+  }, [image, selection]);
 
   const handleSelection = (newSelection) => {
     setSelection(newSelection);
-    sendMessageToDisplay({
-      messageType: "MuralProUpdate",
-      image,
-      selection: newSelection,
-    });
+  };
+
+  const handleImageLoad = (newImage) => {
+    setImage(newImage);
+
+    // Reset selection when a new image is loaded
+    setSelection(null);
   };
 
   const openDisplayWindow = () => {
@@ -55,12 +72,13 @@ function App() {
     );
     displayWindowRef.current = newWindow;
 
-    // Send initial message to the Display window
-    sendMessageToDisplay({
-      messageType: "MuralProUpdate",
-      image,
-      selection,
-    });
+    // Broadcast the initial image and selection
+    if (image && selection) {
+      broadcastChannelRef.current?.postMessage({
+        image,
+        selection,
+      });
+    }
   };
 
   useEffect(() => {
@@ -85,10 +103,10 @@ function App() {
   return (
     <div style={{ padding: "20px" }}>
       <h1>MuralPro</h1>
-      <Setup onImageLoad={setImage} onSelection={handleSelection} />
+      <Setup onImageLoad={handleImageLoad} onSelection={handleSelection} />
       <button
         onClick={openDisplayWindow}
-        disabled={!image || !selection}
+        disabled={!image}
         style={{ marginTop: "10px" }}
       >
         Open Display Window

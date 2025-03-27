@@ -147,7 +147,7 @@ function Setup({ onImageLoad, onSelection }) {
           width: newWidth / scale,
           height: newHeight / scale,
         };
-        console.log("Rectangle moved (adjusted):", adjustedSelection);
+        //console.log("Rectangle moved (adjusted):", adjustedSelection);
         onSelection(adjustedSelection);
       });
 
@@ -162,7 +162,7 @@ function Setup({ onImageLoad, onSelection }) {
           width: newWidth / scale,
           height: newHeight / scale,
         };
-        console.log("Rectangle scaled (adjusted):", adjustedSelection);
+        //console.log("Rectangle scaled (adjusted):", adjustedSelection);
         onSelection(adjustedSelection);
       });
 
