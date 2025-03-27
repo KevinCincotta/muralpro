@@ -1,6 +1,6 @@
 # Basic React App
 
-This is a minimal React app created with Vite.
+This is a minimal React app created with Vite using JavaScript.
 
 ## Getting Started
 
@@ -20,4 +20,12 @@ Start the development server:
 npm run dev
 ```
 
-Your application will be available at `http://localhost
+Your application will be available at `http://localhost:5173`.
+
+## Building for Production
+
+Create a production build:
+
+```bash
+npm run build
+```
