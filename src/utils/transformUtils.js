@@ -1,4 +1,4 @@
-import { Matrix, SingularValueDecomposition } from "ml-matrix";
+import { Matrix, SingularValueDecomposition, inverse } from "ml-matrix";
 
 function computeNormalizationMatrix(points) {
   const n = points.length;
@@ -27,9 +27,10 @@ function computeNormalizationMatrix(points) {
 }
 
 export function getHomography(srcPoints, dstPoints) {
+  console.log("Computing homography with srcPoints:", srcPoints, "dstPoints:", dstPoints); // Add logging
   // Compute normalization transformations
-  const T_src = computeNormalizationMatrix(srcPoints);
-  const T_dst = computeNormalizationMatrix(dstPoints);
+  const T_src = computeNormalizationMatrix(srcPoints); // Ensure T_src is a Matrix instance
+  const T_dst = computeNormalizationMatrix(dstPoints); // Ensure T_dst is a Matrix instance
 
   // Normalize points
   const normSrcPoints = srcPoints.map(p => {
@@ -69,14 +70,14 @@ export function getHomography(srcPoints, dstPoints) {
       [h[6] / scale, h[7] / scale, h[8] / scale],
     ]);
 
-    // Denormalize: H = T_dst^-1 * H' * T_src
-    const T_dst_inv = T_dst.inverse();
+    // Denormalize: H = T_dst^-1 * H' * T_src using the static inverse function
+    const T_dst_inv = inverse(T_dst);
     const H = T_dst_inv.mmul(H_prime).mmul(T_src);
     const H_array = H.to2DArray();
-    console.log("Computed homography:", H_array);
+    console.log("Computed homography matrix:", H_array); // Log the computed matrix
     return H_array;
   } catch (error) {
-    console.error("Homography computation failed:", error);
+    console.error("Error computing homography:", error); // Improved error logging
     return [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
   }
 }
