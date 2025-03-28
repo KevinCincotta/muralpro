@@ -1,9 +1,51 @@
 import { Matrix, SingularValueDecomposition } from "ml-matrix";
 
-export function getHomography(srcPoints, dstPoints) {
-  const [s0, s1, s2, s3] = srcPoints;
-  const [d0, d1, d2, d3] = dstPoints;
+function computeNormalizationMatrix(points) {
+  const n = points.length;
+  let cx = 0, cy = 0;
+  for (const p of points) {
+    cx += p[0];
+    cy += p[1];
+  }
+  cx /= n;
+  cy /= n;
 
+  let dist = 0;
+  for (const p of points) {
+    const dx = p[0] - cx;
+    const dy = p[1] - cy;
+    dist += Math.sqrt(dx * dx + dy * dy);
+  }
+  dist /= n;
+  const s = Math.sqrt(2) / dist;
+
+  return new Matrix([
+    [s, 0, -s * cx],
+    [0, s, -s * cy],
+    [0, 0, 1],
+  ]);
+}
+
+export function getHomography(srcPoints, dstPoints) {
+  // Compute normalization transformations
+  const T_src = computeNormalizationMatrix(srcPoints);
+  const T_dst = computeNormalizationMatrix(dstPoints);
+
+  // Normalize points
+  const normSrcPoints = srcPoints.map(p => {
+    const p_h = new Matrix([[p[0]], [p[1]], [1]]);
+    const p_norm_h = T_src.mmul(p_h);
+    return [p_norm_h.get(0, 0), p_norm_h.get(1, 0)];
+  });
+  const normDstPoints = dstPoints.map(p => {
+    const p_h = new Matrix([[p[0]], [p[1]], [1]]);
+    const p_norm_h = T_dst.mmul(p_h);
+    return [p_norm_h.get(0, 0), p_norm_h.get(1, 0)];
+  });
+
+  // Construct A with normalized points
+  const [s0, s1, s2, s3] = normSrcPoints;
+  const [d0, d1, d2, d3] = normDstPoints;
   const A = [
     [-s0[0], -s0[1], -1, 0, 0, 0, s0[0] * d0[0], s0[1] * d0[0], d0[0]],
     [0, 0, 0, -s0[0], -s0[1], -1, s0[0] * d0[1], s0[1] * d0[1], d0[1]],
@@ -21,16 +63,21 @@ export function getHomography(srcPoints, dstPoints) {
     const V = svd.rightSingularVectors;
     const h = V.getColumn(V.columns - 1);
     const scale = h[8] !== 0 ? h[8] : 1;
-    const H = [
+    const H_prime = new Matrix([
       [h[0] / scale, h[1] / scale, h[2] / scale],
       [h[3] / scale, h[4] / scale, h[5] / scale],
       [h[6] / scale, h[7] / scale, h[8] / scale],
-    ];
-    console.log("Computed homography:", H);
-    return H;
+    ]);
+
+    // Denormalize: H = T_dst^-1 * H' * T_src
+    const T_dst_inv = T_dst.inverse();
+    const H = T_dst_inv.mmul(H_prime).mmul(T_src);
+    const H_array = H.to2DArray();
+    console.log("Computed homography:", H_array);
+    return H_array;
   } catch (error) {
     console.error("Homography computation failed:", error);
-    return [[1, 0, 0], [0, 1, 0], [0, 0, 1]]; // Fallback to identity
+    return [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
   }
 }
 
