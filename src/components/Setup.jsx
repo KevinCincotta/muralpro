@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as fabric from "fabric";
 
-function Setup({ onImageLoad, onSelection, wallWidthFeet }) {
+function Setup({ onImageLoad, onSelection, wallWidthFeet, showGrid, showDesign }) {
   const canvasRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const containerRef = useRef(null);
   const [scaleFactor, setScaleFactor] = useState(1);
-  const [showGrid, setShowGrid] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
+  // Initialize Fabric.js canvas
   useEffect(() => {
     const canvasElement = canvasRef.current;
     if (!canvasElement) {
@@ -23,31 +23,22 @@ function Setup({ onImageLoad, onSelection, wallWidthFeet }) {
     fabricCanvasRef.current = canvas;
     console.log("Fabric canvas initialized:", canvas);
 
-    const handleKeyDown = (event) => {
-      if (event.key === "g" || event.key === "G") {
-        setShowGrid((prev) => !prev);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
     return () => {
       canvas.dispose();
-      window.removeEventListener("keydown", handleKeyDown);
       console.log("Fabric canvas disposed");
     };
   }, []);
 
+  // Handle grid drawing and clearing
   useEffect(() => {
     const fabricCanvas = fabricCanvasRef.current;
     if (!fabricCanvas) return;
 
+    clearGrid(fabricCanvas); // Clear existing grid
     if (showGrid) {
-      drawGrid(fabricCanvas);
-    } else {
-      clearGrid(fabricCanvas);
+      drawGrid(fabricCanvas); // Draw new grid
     }
-  }, [showGrid, scaleFactor, wallWidthFeet, imageDimensions]);
+  }, [showGrid, wallWidthFeet, imageDimensions]);
 
   const drawGrid = (fabricCanvas) => {
     const gridLines = [];

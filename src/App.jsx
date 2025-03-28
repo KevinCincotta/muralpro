@@ -8,18 +8,12 @@ function App() {
   const [selection, setSelection] = useState(null);
   const [wallWidthFeet, setWallWidthFeet] = useState(20);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [showGrid, setShowGrid] = useState(false);
+  const [showDesign, setShowDesign] = useState(true);
   const displayWindowRef = useRef(null);
-  const broadcastChannelRef = useRef(null);
+  const broadcastChannelRef = useRef(new BroadcastChannel("muralpro"));
 
-  useEffect(() => {
-    const channel = new BroadcastChannel("muralpro");
-    broadcastChannelRef.current = channel;
-
-    return () => {
-      channel.close();
-    };
-  }, []);
-
+  // Broadcast state changes to Display window
   useEffect(() => {
     if (image && selection) {
       broadcastChannelRef.current?.postMessage({
@@ -27,9 +21,11 @@ function App() {
         selection,
         wallWidthFeet,
         imageDimensions,
+        showGrid,
+        showDesign,
       });
     }
-  }, [image, selection, wallWidthFeet, imageDimensions]);
+  }, [image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign]);
 
   const handleSelection = (newSelection) => {
     setSelection(newSelection);
@@ -39,6 +35,8 @@ function App() {
     setImage(newImage);
     setImageDimensions(dimensions);
     setSelection(null);
+    setShowGrid(false); // Reset grid on new image load
+    setShowDesign(true); // Reset design visibility
   };
 
   const handleWallWidthChange = (event) => {
@@ -77,6 +75,8 @@ function App() {
         initialSelection={selection}
         initialWallWidthFeet={wallWidthFeet}
         initialImageDimensions={imageDimensions}
+        initialShowGrid={showGrid}
+        initialShowDesign={showDesign}
       />
     );
     displayWindowRef.current = newWindow;
@@ -87,10 +87,27 @@ function App() {
         selection,
         wallWidthFeet,
         imageDimensions,
+        showGrid,
+        showDesign,
       });
     }
   };
 
+  // Keyboard event handling for toggling grid and design
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "g" || event.key === "G") {
+        setShowGrid((prev) => !prev);
+      } else if (event.key === "d" || event.key === "D") {
+        setShowDesign((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Periodically check if the display window is closed
   useEffect(() => {
     const interval = setInterval(() => {
       const displayWindow = displayWindowRef.current;
@@ -101,6 +118,7 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Close display window on component unmount
   useEffect(() => {
     return () => {
       const displayWindow = displayWindowRef.current;
@@ -125,7 +143,13 @@ function App() {
           />
         </label>
       </div>
-      <Setup onImageLoad={handleImageLoad} onSelection={handleSelection} wallWidthFeet={wallWidthFeet} />
+      <Setup
+        onImageLoad={handleImageLoad}
+        onSelection={handleSelection}
+        wallWidthFeet={wallWidthFeet}
+        showGrid={showGrid}
+        showDesign={showDesign}
+      />
       <button
         onClick={openDisplayWindow}
         disabled={!image}

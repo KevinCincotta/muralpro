@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 
-function Display({ initialImage, initialSelection, initialWallWidthFeet, initialImageDimensions }) {
+function Display({ initialImage, initialSelection, initialWallWidthFeet, initialImageDimensions, initialShowGrid, initialShowDesign }) {
   const canvasRef = useRef(null);
   const [image, setImage] = useState(initialImage);
   const [selection, setSelection] = useState(initialSelection);
   const [wallWidthFeet, setWallWidthFeet] = useState(initialWallWidthFeet || 20);
   const [imageDimensions, setImageDimensions] = useState(initialImageDimensions || { width: 0, height: 0 });
-  const [showGrid, setShowGrid] = useState(false);
-  const [showDesign, setShowDesign] = useState(true);
+  const [showGrid, setShowGrid] = useState(initialShowGrid || false);
+  const [showDesign, setShowDesign] = useState(initialShowDesign || true);
 
   const updateCanvas = (imgSrc, sel) => {
     const canvas = canvasRef.current;
@@ -19,30 +19,14 @@ function Display({ initialImage, initialSelection, initialWallWidthFeet, initial
     const ctx = canvas.getContext("2d");
     canvas.width = 1920;
     canvas.height = 1080;
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before redrawing
 
     if (showDesign && imgSrc && sel) {
       const img = new Image();
       img.src = imgSrc;
       img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(
-          img,
-          sel.x,
-          sel.y,
-          sel.width,
-          sel.height,
-          0,
-          0,
-          1920,
-          1080
-        );
-
-        if (showGrid) {
-          drawGrid(ctx, sel, 1920, 1080);
-        }
-      };
-      img.onerror = (err) => {
-        console.error("Error loading image in Display:", err);
+        ctx.drawImage(img, sel.x, sel.y, sel.width, sel.height, 0, 0, 1920, 1080);
+        if (showGrid) drawGrid(ctx, sel, 1920, 1080);
       };
     } else {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -55,26 +39,43 @@ function Display({ initialImage, initialSelection, initialWallWidthFeet, initial
     }
   };
 
+  // Synchronize state with App via BroadcastChannel
+  useEffect(() => {
+    const channel = new BroadcastChannel("muralpro");
+    channel.onmessage = (event) => {
+      const { image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign } = event.data;
+      setImage(image);
+      setSelection(selection || null);
+      if (wallWidthFeet) setWallWidthFeet(wallWidthFeet);
+      if (imageDimensions) setImageDimensions(imageDimensions);
+      if (showGrid !== undefined) setShowGrid(showGrid);
+      if (showDesign !== undefined) setShowDesign(showDesign);
+    };
+    return () => channel.close();
+  }, []);
+
+  // Update canvas when relevant states change
+  useEffect(() => {
+    if (image && selection) updateCanvas(image, selection);
+    else if (image || !showDesign) updateCanvas(null, selection);
+  }, [image, selection, showGrid, showDesign, wallWidthFeet, imageDimensions]);
+
   const drawGrid = (ctx, sel, width, height) => {
     if (!sel || imageDimensions.width === 0 || imageDimensions.height === 0) return;
 
-    // Calculate pixels per foot based on wall width and original image width
     const pixelsPerFoot = imageDimensions.width / wallWidthFeet;
-
-    // Major gridlines every 4 feet, minor gridlines every 1 foot
     const majorGridSpacingFeet = 4;
     const minorGridSpacingFeet = 1;
     const majorGridSpacingPixels = majorGridSpacingFeet * pixelsPerFoot;
     const minorGridSpacingPixels = minorGridSpacingFeet * pixelsPerFoot;
 
-    // Scale the spacing for the Display window (1920x1080)
     const scaleX = width / sel.width;
     const scaleY = height / sel.height;
 
     ctx.strokeStyle = "white";
 
     // Draw major vertical gridlines
-    ctx.lineWidth = 4; // Fixed 4px for major gridlines
+    ctx.lineWidth = 4;
     for (let x = Math.floor(sel.x / majorGridSpacingPixels) * majorGridSpacingPixels; x <= sel.x + sel.width; x += majorGridSpacingPixels) {
       if (x >= sel.x && x <= sel.x + sel.width) {
         const screenX = (x - sel.x) * scaleX;
@@ -97,7 +98,7 @@ function Display({ initialImage, initialSelection, initialWallWidthFeet, initial
     }
 
     // Draw minor vertical gridlines
-    ctx.lineWidth = 2; // Fixed 2px for minor gridlines
+    ctx.lineWidth = 2;
     for (let x = Math.floor(sel.x / minorGridSpacingPixels) * minorGridSpacingPixels; x <= sel.x + sel.width; x += minorGridSpacingPixels) {
       if (x % majorGridSpacingPixels !== 0 && x >= sel.x && x <= sel.x + sel.width) {
         const screenX = (x - sel.x) * scaleX;
@@ -119,58 +120,6 @@ function Display({ initialImage, initialSelection, initialWallWidthFeet, initial
       }
     }
   };
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === "g" || event.key === "G") {
-        setShowGrid((prev) => !prev);
-      } else if (event.key === "d" || event.key === "D") {
-        setShowDesign((prev) => !prev);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (image && selection) {
-      updateCanvas(image, selection);
-    } else if (image || !showDesign) {
-      updateCanvas(null, selection);
-    }
-  }, [image, selection, showGrid, showDesign, wallWidthFeet, imageDimensions]);
-
-  useEffect(() => {
-    const channel = new BroadcastChannel("muralpro");
-
-    const handleMessage = (event) => {
-      const { image: newImage, selection: newSelection, wallWidthFeet: newWallWidthFeet, imageDimensions: newImageDimensions } = event.data;
-
-      if (!newImage) {
-        console.warn("Invalid BroadcastChannel message data:", event.data);
-        return;
-      }
-
-      setImage(newImage);
-      setSelection(newSelection || null);
-      if (newWallWidthFeet) {
-        setWallWidthFeet(newWallWidthFeet);
-      }
-      if (newImageDimensions) {
-        setImageDimensions(newImageDimensions);
-      }
-    };
-
-    channel.onmessage = handleMessage;
-
-    return () => {
-      channel.close();
-    };
-  }, []);
 
   return (
     <canvas
