@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as fabric from "fabric";
 
-function Setup({ onImageLoad, onSelection }) {
+function Setup({ onImageLoad, onSelection, wallWidthFeet }) {
   const canvasRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const containerRef = useRef(null);
   const [scaleFactor, setScaleFactor] = useState(1);
+  const [showGrid, setShowGrid] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const canvasElement = canvasRef.current;
@@ -21,11 +23,133 @@ function Setup({ onImageLoad, onSelection }) {
     fabricCanvasRef.current = canvas;
     console.log("Fabric canvas initialized:", canvas);
 
+    const handleKeyDown = (event) => {
+      if (event.key === "g" || event.key === "G") {
+        setShowGrid((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
     return () => {
       canvas.dispose();
+      window.removeEventListener("keydown", handleKeyDown);
       console.log("Fabric canvas disposed");
     };
   }, []);
+
+  useEffect(() => {
+    const fabricCanvas = fabricCanvasRef.current;
+    if (!fabricCanvas) return;
+
+    if (showGrid) {
+      drawGrid(fabricCanvas);
+    } else {
+      clearGrid(fabricCanvas);
+    }
+  }, [showGrid, scaleFactor, wallWidthFeet, imageDimensions]);
+
+  const drawGrid = (fabricCanvas) => {
+    const gridLines = [];
+    const canvasWidth = fabricCanvas.getWidth();
+    const canvasHeight = fabricCanvas.getHeight();
+
+    // Unscaled image dimensions
+    const imageWidth = imageDimensions.width;
+    const imageHeight = imageDimensions.height;
+
+    if (imageWidth === 0 || imageHeight === 0) return;
+
+    // Calculate pixels per foot based on wall width
+    const pixelsPerFoot = imageWidth / wallWidthFeet;
+
+    // Major gridlines every 4 feet, minor gridlines every 1 foot
+    const majorGridSpacingFeet = 4;
+    const minorGridSpacingFeet = 1;
+    const majorGridSpacingPixels = majorGridSpacingFeet * pixelsPerFoot;
+    const minorGridSpacingPixels = minorGridSpacingFeet * pixelsPerFoot;
+
+    // Scale the spacing for the canvas
+    const scaledMajorGridSpacing = majorGridSpacingPixels * scaleFactor;
+    const scaledMinorGridSpacing = minorGridSpacingPixels * scaleFactor;
+
+    // Draw major vertical gridlines
+    for (let x = 0; x <= imageWidth; x += majorGridSpacingPixels) {
+      const scaledX = x * scaleFactor;
+      if (scaledX >= 0 && scaledX <= canvasWidth) {
+        gridLines.push(
+          new fabric.Line([scaledX, 0, scaledX, canvasHeight], {
+            stroke: "white",
+            strokeWidth: 4, // Fixed 4px for major gridlines
+            selectable: false,
+            evented: false,
+          })
+        );
+      }
+    }
+
+    // Draw major horizontal gridlines
+    for (let y = 0; y <= imageHeight; y += majorGridSpacingPixels) {
+      const scaledY = y * scaleFactor;
+      if (scaledY >= 0 && scaledY <= canvasHeight) {
+        gridLines.push(
+          new fabric.Line([0, scaledY, canvasWidth, scaledY], {
+            stroke: "white",
+            strokeWidth: 4, // Fixed 4px for major gridlines
+            selectable: false,
+            evented: false,
+          })
+        );
+      }
+    }
+
+    // Draw minor vertical gridlines
+    for (let x = 0; x <= imageWidth; x += minorGridSpacingPixels) {
+      if (x % majorGridSpacingPixels !== 0) {
+        const scaledX = x * scaleFactor;
+        if (scaledX >= 0 && scaledX <= canvasWidth) {
+          gridLines.push(
+            new fabric.Line([scaledX, 0, scaledX, canvasHeight], {
+              stroke: "white",
+              strokeWidth: 2, // Fixed 2px for minor gridlines
+              selectable: false,
+              evented: false,
+            })
+          );
+        }
+      }
+    }
+
+    // Draw minor horizontal gridlines
+    for (let y = 0; y <= imageHeight; y += minorGridSpacingPixels) {
+      if (y % majorGridSpacingPixels !== 0) {
+        const scaledY = y * scaleFactor;
+        if (scaledY >= 0 && scaledY <= canvasHeight) {
+          gridLines.push(
+            new fabric.Line([0, scaledY, canvasWidth, scaledY], {
+              stroke: "white",
+              strokeWidth: 2, // Fixed 2px for minor gridlines
+              selectable: false,
+              evented: false,
+            })
+          );
+        }
+      }
+    }
+
+    // Add gridlines to the canvas
+    gridLines.forEach((line) => fabricCanvas.add(line));
+    fabricCanvas.renderAll();
+    fabricCanvas.gridLines = gridLines; // Store gridlines for clearing later
+  };
+
+  const clearGrid = (fabricCanvas) => {
+    if (fabricCanvas.gridLines) {
+      fabricCanvas.gridLines.forEach((line) => fabricCanvas.remove(line));
+      fabricCanvas.gridLines = null;
+      fabricCanvas.renderAll();
+    }
+  };
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
@@ -36,7 +160,6 @@ function Setup({ onImageLoad, onSelection }) {
 
     const url = URL.createObjectURL(file);
     console.log("Image URL created:", url);
-    onImageLoad(url);
 
     const fabricCanvas = fabricCanvasRef.current;
     if (!fabricCanvas) {
@@ -48,6 +171,11 @@ function Setup({ onImageLoad, onSelection }) {
     imgElement.src = url;
     imgElement.onload = () => {
       console.log("Image pre-loaded successfully:", imgElement.width, "x", imgElement.height);
+
+      // Store unscaled image dimensions and pass to App
+      const dimensions = { width: imgElement.width, height: imgElement.height };
+      setImageDimensions(dimensions);
+      onImageLoad(url, dimensions);
 
       const containerWidth = containerRef.current.offsetWidth;
       const imageWidth = imgElement.width;
@@ -147,7 +275,6 @@ function Setup({ onImageLoad, onSelection }) {
           width: newWidth / scale,
           height: newHeight / scale,
         };
-        //console.log("Rectangle moved (adjusted):", adjustedSelection);
         onSelection(adjustedSelection);
       });
 
@@ -162,7 +289,6 @@ function Setup({ onImageLoad, onSelection }) {
           width: newWidth / scale,
           height: newHeight / scale,
         };
-        //console.log("Rectangle scaled (adjusted):", adjustedSelection);
         onSelection(adjustedSelection);
       });
 

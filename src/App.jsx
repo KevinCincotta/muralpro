@@ -6,39 +6,46 @@ import ReactDOM from "react-dom/client";
 function App() {
   const [image, setImage] = useState(null);
   const [selection, setSelection] = useState(null);
+  const [wallWidthFeet, setWallWidthFeet] = useState(20);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const displayWindowRef = useRef(null);
   const broadcastChannelRef = useRef(null);
 
   useEffect(() => {
-    // Initialize the BroadcastChannel
     const channel = new BroadcastChannel("muralpro");
     broadcastChannelRef.current = channel;
 
     return () => {
-      // Close the BroadcastChannel when the component unmounts
       channel.close();
     };
   }, []);
 
-  // Broadcast updates whenever `image` or `selection` changes
   useEffect(() => {
     if (image && selection) {
       broadcastChannelRef.current?.postMessage({
         image,
         selection,
+        wallWidthFeet,
+        imageDimensions,
       });
     }
-  }, [image, selection]);
+  }, [image, selection, wallWidthFeet, imageDimensions]);
 
   const handleSelection = (newSelection) => {
     setSelection(newSelection);
   };
 
-  const handleImageLoad = (newImage) => {
+  const handleImageLoad = (newImage, dimensions) => {
     setImage(newImage);
-
-    // Reset selection when a new image is loaded
+    setImageDimensions(dimensions);
     setSelection(null);
+  };
+
+  const handleWallWidthChange = (event) => {
+    const value = parseInt(event.target.value, 10);
+    if (!isNaN(value) && value > 0) {
+      setWallWidthFeet(value);
+    }
   };
 
   const openDisplayWindow = () => {
@@ -68,15 +75,18 @@ function App() {
       <Display
         initialImage={image}
         initialSelection={selection}
+        initialWallWidthFeet={wallWidthFeet}
+        initialImageDimensions={imageDimensions}
       />
     );
     displayWindowRef.current = newWindow;
 
-    // Broadcast the initial image and selection
     if (image && selection) {
       broadcastChannelRef.current?.postMessage({
         image,
         selection,
+        wallWidthFeet,
+        imageDimensions,
       });
     }
   };
@@ -103,7 +113,19 @@ function App() {
   return (
     <div style={{ padding: "20px" }}>
       <h1>MuralPro</h1>
-      <Setup onImageLoad={handleImageLoad} onSelection={handleSelection} />
+      <div style={{ marginBottom: "10px" }}>
+        <label>
+          Wall Width (feet):
+          <input
+            type="number"
+            value={wallWidthFeet}
+            onChange={handleWallWidthChange}
+            min="1"
+            style={{ marginLeft: "5px", width: "60px" }}
+          />
+        </label>
+      </div>
+      <Setup onImageLoad={handleImageLoad} onSelection={handleSelection} wallWidthFeet={wallWidthFeet} />
       <button
         onClick={openDisplayWindow}
         disabled={!image}
