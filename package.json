@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "fabric": "^6.6.1",
+    "ml-matrix": "^6.12.1",
+    "numeric": "^1.2.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

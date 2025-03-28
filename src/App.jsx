@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Setup from "./components/Setup";
 import Display from "./components/Display";
 import ReactDOM from "react-dom/client";
+import "./App.css";
 
 function App() {
   const [image, setImage] = useState(null);
@@ -10,12 +11,19 @@ function App() {
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [showGrid, setShowGrid] = useState(false);
   const [showDesign, setShowDesign] = useState(true);
+  const [cornerOffsets, setCornerOffsets] = useState({
+    upperLeft: { x: 0, y: 0 },
+    upperRight: { x: 0, y: 0 },
+    lowerLeft: { x: 0, y: 0 },
+    lowerRight: { x: 0, y: 0 },
+  });
   const displayWindowRef = useRef(null);
   const broadcastChannelRef = useRef(new BroadcastChannel("muralpro"));
 
   // Broadcast state changes to Display window
   useEffect(() => {
     if (image && selection) {
+      console.log("Broadcasting state with image URL:", image);
       broadcastChannelRef.current?.postMessage({
         image,
         selection,
@@ -23,9 +31,10 @@ function App() {
         imageDimensions,
         showGrid,
         showDesign,
+        cornerOffsets,
       });
     }
-  }, [image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign]);
+  }, [image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign, cornerOffsets]);
 
   const handleSelection = (newSelection) => {
     setSelection(newSelection);
@@ -35,8 +44,14 @@ function App() {
     setImage(newImage);
     setImageDimensions(dimensions);
     setSelection(null);
-    setShowGrid(false); // Reset grid on new image load
-    setShowDesign(true); // Reset design visibility
+    setShowGrid(false);
+    setShowDesign(true);
+    setCornerOffsets({
+      upperLeft: { x: 0, y: 0 },
+      upperRight: { x: 0, y: 0 },
+      lowerLeft: { x: 0, y: 0 },
+      lowerRight: { x: 0, y: 0 },
+    });
   };
 
   const handleWallWidthChange = (event) => {
@@ -47,6 +62,7 @@ function App() {
   };
 
   const openDisplayWindow = () => {
+    console.log("Opening Display window with state:", { image, selection, cornerOffsets });
     const displayWindow = displayWindowRef.current;
     if (displayWindow && !displayWindow.closed) {
       displayWindow.close();
@@ -58,6 +74,12 @@ function App() {
       return;
     }
 
+    // Set up the Display window's DOM
+    newWindow.document.head.innerHTML = `
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>MuralPro Display</title>
+    `;
     newWindow.document.body.style.margin = "0";
     newWindow.document.body.style.overflow = "hidden";
     newWindow.document.body.innerHTML = `<div id="display-root"></div>`;
@@ -77,11 +99,13 @@ function App() {
         initialImageDimensions={imageDimensions}
         initialShowGrid={showGrid}
         initialShowDesign={showDesign}
+        initialCornerOffsets={cornerOffsets}
       />
     );
     displayWindowRef.current = newWindow;
 
     if (image && selection) {
+      console.log("Broadcasting state with image URL:", image);
       broadcastChannelRef.current?.postMessage({
         image,
         selection,
@@ -89,11 +113,12 @@ function App() {
         imageDimensions,
         showGrid,
         showDesign,
+        cornerOffsets,
       });
     }
   };
 
-  // Keyboard event handling for toggling grid and design
+  // Keyboard event handling
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "g" || event.key === "G") {
@@ -102,12 +127,10 @@ function App() {
         setShowDesign((prev) => !prev);
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Periodically check if the display window is closed
   useEffect(() => {
     const interval = setInterval(() => {
       const displayWindow = displayWindowRef.current;
@@ -118,7 +141,6 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Close display window on component unmount
   useEffect(() => {
     return () => {
       const displayWindow = displayWindowRef.current;
@@ -129,9 +151,9 @@ function App() {
   }, []);
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div className="app-container">
       <h1>MuralPro</h1>
-      <div style={{ marginBottom: "10px" }}>
+      <div className="controls">
         <label>
           Wall Width (feet):
           <input
@@ -139,9 +161,16 @@ function App() {
             value={wallWidthFeet}
             onChange={handleWallWidthChange}
             min="1"
-            style={{ marginLeft: "5px", width: "60px" }}
+            className="wall-width-input"
           />
         </label>
+        <button
+          onClick={openDisplayWindow}
+          disabled={!image}
+          className="display-button"
+        >
+          Open Display Window
+        </button>
       </div>
       <Setup
         onImageLoad={handleImageLoad}
@@ -149,14 +178,9 @@ function App() {
         wallWidthFeet={wallWidthFeet}
         showGrid={showGrid}
         showDesign={showDesign}
+        cornerOffsets={cornerOffsets}
+        setCornerOffsets={setCornerOffsets}
       />
-      <button
-        onClick={openDisplayWindow}
-        disabled={!image}
-        style={{ marginTop: "10px" }}
-      >
-        Open Display Window
-      </button>
     </div>
   );
 }
