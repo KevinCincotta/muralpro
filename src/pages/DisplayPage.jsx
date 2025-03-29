@@ -38,6 +38,13 @@ function DisplayPage() {
     
     // Listen for updates from the main window
     channelRef.current.onmessage = (event) => {
+      // Check for close action first
+      if (event.data.action === 'CLOSE_WINDOW') {
+        console.log("Received close command, closing window...");
+        window.close();
+        return;
+      }
+      
       const { 
         image, selection, wallWidthFeet, 
         imageDimensions, showGrid, 

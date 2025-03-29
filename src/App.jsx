@@ -43,6 +43,7 @@ function MainContent() {
   } = useAppState();
 
   const broadcastChannelRef = useRef(null);
+  const displayWindowRef = useRef(null);
 
   const handleSelection = (newSelection) => {
     setSelection(newSelection);
@@ -70,6 +71,27 @@ function MainContent() {
   };
 
   const openDisplayWindow = () => {
+    // Close any existing display window first
+    if (displayWindowRef.current && !displayWindowRef.current.closed) {
+      // Send a close message to the window before closing it
+      try {
+        const channel = new BroadcastChannel(`muralpro-${sessionId}`);
+        channel.postMessage({
+          action: 'CLOSE_WINDOW'
+        });
+        
+        // Give the window a moment to receive the message before closing
+        setTimeout(() => {
+          displayWindowRef.current.close();
+          displayWindowRef.current = null;
+        }, 100);
+      } catch (error) {
+        // In case of any error, force close the window
+        displayWindowRef.current.close();
+        displayWindowRef.current = null;
+      }
+    }
+    
     // Create query parameters with just the session ID
     const params = new URLSearchParams({
       sessionId
@@ -87,6 +109,9 @@ function MainContent() {
       return;
     }
 
+    // Store reference to the new window
+    displayWindowRef.current = newWindow;
+
     // Force an immediate state broadcast after a short delay
     setTimeout(() => {
       console.log("Forcing initial state broadcast to new window");
@@ -99,10 +124,22 @@ function MainContent() {
         imageDimensions,
         showGrid,
         showDesign,
+        showDebug,
         cornerOffsets
       });
     }, 300); // Shorter delay for faster initial sync
   };
+
+  // Check if display window is still open
+  useEffect(() => {
+    const checkWindowOpen = setInterval(() => {
+      if (displayWindowRef.current && displayWindowRef.current.closed) {
+        displayWindowRef.current = null;
+      }
+    }, 1000);
+    
+    return () => clearInterval(checkWindowOpen);
+  }, []);
 
   // Keyboard event handling
   useEffect(() => {
