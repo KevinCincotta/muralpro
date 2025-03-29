@@ -3,7 +3,7 @@ import * as fabric from "fabric";
 import CorrectionControls from "./CorrectionControls";
 import "../App.css";
 
-function Setup({ onImageLoad, onSelection, wallWidthFeet, showGrid, showDesign, cornerOffsets, setCornerOffsets }) {
+function Setup({ onImageLoad, onSelection, wallWidthFeet, showGrid, showDesign, cornerOffsets, setCornerOffsets, setShowGrid, setShowDesign, showDebug, setShowDebug }) {
   const canvasRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -159,10 +159,14 @@ function Setup({ onImageLoad, onSelection, wallWidthFeet, showGrid, showDesign, 
 
       const imgWidth = imgElement.width;
       const imgHeight = imgElement.height;
-      let rectWidth = imgWidth;
+
+      // Calculate a selection with margins
+      const margin = 20; // Pixels of margin to ensure outline visibility
+      let rectWidth = imgWidth - 2 * margin;
       let rectHeight = (rectWidth * 9) / 16;
-      if (rectHeight > imgHeight) {
-        rectHeight = imgHeight;
+      
+      if (rectHeight > imgHeight - 2 * margin) {
+        rectHeight = imgHeight - 2 * margin;
         rectWidth = (rectHeight * 16) / 9;
       }
 
@@ -170,8 +174,8 @@ function Setup({ onImageLoad, onSelection, wallWidthFeet, showGrid, showDesign, 
       const scaledRectHeight = rectHeight * scale;
 
       const rect = new fabric.Rect({
-        left: 0,
-        top: scaledHeight - scaledRectHeight,
+        left: margin * scale, // Add margin to left
+        top: (scaledHeight - scaledRectHeight) - margin * scale, // Add margin to top
         width: scaledRectWidth,
         height: scaledRectHeight,
         fill: "rgba(0, 0, 255, 0.2)",
@@ -228,8 +232,8 @@ function Setup({ onImageLoad, onSelection, wallWidthFeet, showGrid, showDesign, 
       fabricCanvas.renderAll();
 
       onSelection({
-        x: 0,
-        y: (scaledHeight - scaledRectHeight) / scale,
+        x: margin, // Include margin in initial selection
+        y: imgHeight - rectHeight - margin, // Include margin in initial selection
         width: rectWidth,
         height: rectHeight,
       });
@@ -239,7 +243,35 @@ function Setup({ onImageLoad, onSelection, wallWidthFeet, showGrid, showDesign, 
   return (
     <div className="setup-container">
       <h2>Setup</h2>
-      <input type="file" accept="image/*" onChange={handleImageUpload} className="file-input" />
+      <div className="controls-panel">
+        <input type="file" accept="image/*" onChange={handleImageUpload} className="file-input" />
+        <div className="checkbox-controls">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={showGrid}
+              onChange={() => setShowGrid(prev => !prev)}
+            />
+            Show Grid (G)
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={showDesign}
+              onChange={() => setShowDesign(prev => !prev)}
+            />
+            Show Design (D)
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={showDebug}
+              onChange={() => setShowDebug(prev => !prev)}
+            />
+            Debug Info (I)
+          </label>
+        </div>
+      </div>
       <div ref={containerRef} className="canvas-container">
         <canvas ref={canvasRef} />
       </div>

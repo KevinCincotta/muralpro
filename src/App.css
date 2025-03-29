@@ -1,10 +1,10 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background-color: #f0f0f0;
 }
 
 .app-container {
+  background-color: #f0f0f0;
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
@@ -45,10 +45,13 @@ h1 {
 }
 
 .setup-container {
-  background-color: white;
-  padding: 20px;
+  background-color: #fff;
+  padding: 1rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden; /* Prevent scrollbars */
+  display: flex;
+  flex-direction: column;
 }
 
 .setup-container h2 {
@@ -61,11 +64,15 @@ h1 {
 }
 
 .canvas-container {
+  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  margin-bottom: 20px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  overflow: hidden; /* Prevent scrollbars */
+  margin: 1rem 0;
+}
+
+.canvas-container canvas {
+  max-width: 100%;
+  height: auto;
 }
 
 .correction-controls {
@@ -145,4 +152,29 @@ h1 {
 
 .reset-all-button:hover {
   background-color: #218838;
+}
+
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.checkbox-controls {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  cursor: pointer;
 }

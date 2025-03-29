@@ -1,40 +1,48 @@
 import React, { useState, useEffect, useRef } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Setup from "./components/Setup";
-import Display from "./components/Display";
-import ReactDOM from "react-dom/client";
+import DisplayPage from "./pages/DisplayPage";
+import { StateProvider, StateContext } from "./context/StateContext";
 import "./App.css";
 
 function App() {
-  const [image, setImage] = useState(null);
-  const [selection, setSelection] = useState(null);
-  const [wallWidthFeet, setWallWidthFeet] = useState(20);
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
-  const [showGrid, setShowGrid] = useState(false);
-  const [showDesign, setShowDesign] = useState(true);
-  const [cornerOffsets, setCornerOffsets] = useState({
-    upperLeft: { x: 0, y: 0 },
-    upperRight: { x: 0, y: 0 },
-    lowerLeft: { x: 0, y: 0 },
-    lowerRight: { x: 0, y: 0 },
-  });
-  const displayWindowRef = useRef(null);
-  const broadcastChannelRef = useRef(new BroadcastChannel("muralpro"));
+  return (
+    <StateProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<MainPage />} />
+          <Route path="/display" element={<DisplayPage />} />
+        </Routes>
+      </Router>
+    </StateProvider>
+  );
+}
 
-  // Broadcast state changes to Display window
-  useEffect(() => {
-    if (image && selection) {
-      console.log("Broadcasting state with image URL:", image);
-      broadcastChannelRef.current?.postMessage({
-        image,
-        selection,
-        wallWidthFeet,
-        imageDimensions,
-        showGrid,
-        showDesign,
-        cornerOffsets,
-      });
-    }
-  }, [image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign, cornerOffsets]);
+// The main page component with setup functionality
+function MainPage() {
+  return (
+    <div className="app-container">
+      <h1>MuralPro</h1>
+      <MainContent />
+    </div>
+  );
+}
+
+// MainContent handles the actual setup UI
+function MainContent() {
+  const { 
+    image, setImage, 
+    selection, setSelection, 
+    wallWidthFeet, setWallWidthFeet, 
+    imageDimensions, setImageDimensions, 
+    showGrid, setShowGrid, 
+    showDesign, setShowDesign,
+    showDebug, setShowDebug, 
+    cornerOffsets, setCornerOffsets,
+    sessionId 
+  } = useAppState();
+
+  const broadcastChannelRef = useRef(null);
 
   const handleSelection = (newSelection) => {
     setSelection(newSelection);
@@ -62,60 +70,38 @@ function App() {
   };
 
   const openDisplayWindow = () => {
-    console.log("Opening Display window with state:", { image, selection, cornerOffsets });
-    const displayWindow = displayWindowRef.current;
-    if (displayWindow && !displayWindow.closed) {
-      displayWindow.close();
-    }
-
-    const newWindow = window.open("about:blank", `MuralProDisplay_${Date.now()}`, "width=1920,height=1080");
+    // Create query parameters with just the session ID
+    const params = new URLSearchParams({
+      sessionId
+    });
+    
+    // Open the display in a new window
+    const newWindow = window.open(
+      `/display?${params.toString()}`,
+      `MuralProDisplay_${Date.now()}`,
+      "width=1920,height=1080"
+    );
+    
     if (!newWindow) {
       console.error("Failed to open display window. Check popup blocker.");
       return;
     }
 
-    // Set up the Display window's DOM
-    newWindow.document.head.innerHTML = `
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>MuralPro Display</title>
-    `;
-    newWindow.document.body.style.margin = "0";
-    newWindow.document.body.style.overflow = "hidden";
-    newWindow.document.body.innerHTML = `<div id="display-root"></div>`;
-    newWindow.document.title = "MuralPro Display";
-
-    const root = newWindow.document.getElementById("display-root");
-    if (!root) {
-      console.error("Display root element not found in new window");
-      return;
-    }
-
-    ReactDOM.createRoot(root).render(
-      <Display
-        initialImage={image}
-        initialSelection={selection}
-        initialWallWidthFeet={wallWidthFeet}
-        initialImageDimensions={imageDimensions}
-        initialShowGrid={showGrid}
-        initialShowDesign={showDesign}
-        initialCornerOffsets={cornerOffsets}
-      />
-    );
-    displayWindowRef.current = newWindow;
-
-    if (image && selection) {
-      console.log("Broadcasting state with image URL:", image);
-      broadcastChannelRef.current?.postMessage({
+    // Force an immediate state broadcast after a short delay
+    setTimeout(() => {
+      console.log("Forcing initial state broadcast to new window");
+      // We directly instantiate a new BroadcastChannel to ensure the message goes through
+      const channel = new BroadcastChannel(`muralpro-${sessionId}`);
+      channel.postMessage({
         image,
         selection,
         wallWidthFeet,
         imageDimensions,
         showGrid,
         showDesign,
-        cornerOffsets,
+        cornerOffsets
       });
-    }
+    }, 300); // Shorter delay for faster initial sync
   };
 
   // Keyboard event handling
@@ -125,34 +111,16 @@ function App() {
         setShowGrid((prev) => !prev);
       } else if (event.key === "d" || event.key === "D") {
         setShowDesign((prev) => !prev);
+      } else if (event.key === "i" || event.key === "I") {
+        setShowDebug((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const displayWindow = displayWindowRef.current;
-      if (displayWindow && displayWindow.closed) {
-        displayWindowRef.current = null;
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      const displayWindow = displayWindowRef.current;
-      if (displayWindow && !displayWindow.closed) {
-        displayWindow.close();
-      }
-    };
-  }, []);
+  }, [setShowGrid, setShowDesign, setShowDebug]);
 
   return (
-    <div className="app-container">
-      <h1>MuralPro</h1>
+    <div>
       <div className="controls">
         <label>
           Wall Width (feet):
@@ -177,12 +145,21 @@ function App() {
         onSelection={handleSelection}
         wallWidthFeet={wallWidthFeet}
         showGrid={showGrid}
+        setShowGrid={setShowGrid}
         showDesign={showDesign}
+        setShowDesign={setShowDesign}
+        showDebug={showDebug}
+        setShowDebug={setShowDebug}
         cornerOffsets={cornerOffsets}
         setCornerOffsets={setCornerOffsets}
       />
     </div>
   );
+}
+
+// Helper hook to get app state from context
+function useAppState() {
+  return React.useContext(StateContext);
 }
 
 export default App;
