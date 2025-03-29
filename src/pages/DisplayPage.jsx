@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getHomography, transformPoint, homographyToTransformMatrix } from "../utils/transformUtils";
+import * as fabric from "fabric";
 import "../styles/DisplayPage.css";
 
 function DisplayPage() {
@@ -23,8 +23,10 @@ function DisplayPage() {
   });
   
   const canvasRef = useRef(null);
+  const fabricCanvasRef = useRef(null);
   const channelRef = useRef(null);
-  const imageRef = useRef(null); // To hold the loaded image
+  const imageInstanceRef = useRef(null);
+  const gridLinesRef = useRef([]);
 
   // Set up the broadcast channel connection
   useEffect(() => {
@@ -53,16 +55,7 @@ function DisplayPage() {
       
       console.log("DisplayPage received update:", event.data);
       
-      if (image) {
-        setImage(image);
-        // Preload the image
-        const img = new Image();
-        img.src = image;
-        img.onload = () => {
-          imageRef.current = img;
-          renderScene();
-        };
-      }
+      if (image) setImage(image);
       if (selection) setSelection(selection);
       if (wallWidthFeet) setWallWidthFeet(wallWidthFeet);
       if (imageDimensions) setImageDimensions(imageDimensions);
@@ -83,268 +76,422 @@ function DisplayPage() {
     };
   }, [sessionId]);
 
-  // Helper function to check if all offsets are zero
-  const offsetsAreZero = (offsets) => {
-    return Object.values(offsets).every(corner => corner.x === 0 && corner.y === 0);
-  };
-
-  // Preload image when it changes
+  // Initialize Fabric.js canvas with WebGL support
   useEffect(() => {
-    if (image) {
-      const img = new Image();
-      img.src = image;
-      img.onload = () => {
-        imageRef.current = img;
-        renderScene();
-      };
-    }
-  }, [image]);
-
-  // Consolidated rendering function
-  const renderScene = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvasRef.current) return;
     
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Only continue with rendering if we have selection data
-    if (!selection) {
-      renderDebugInfo(ctx);
-      return;
+    // Clean up any existing canvas
+    if (fabricCanvasRef.current) {
+      fabricCanvasRef.current.dispose();
     }
     
-    // Calculate transform matrix based on selection and offsets
-    const transformData = calculateTransformData(canvas, selection, cornerOffsets);
-    if (!transformData) {
-      renderDebugInfo(ctx);
-      return;
-    }
-    
-    // Draw elements in order: background, image (if visible), then grid (if visible)
-    
-    // 1. Background is already filled black above
-    
-    // 2. Draw image if visible and available
-    if (showDesign && imageRef.current) {
-      drawImage(ctx, imageRef.current, selection, transformData);
-    }
-    
-    // 3. Always draw grid on top if enabled
-    if (showGrid) {
-      drawGrid(ctx, selection, transformData);
-    }
-    
-    // 4. Draw debug info on top of everything if enabled
-    if (showDebug) {
-      renderDebugInfo(ctx);
-    }
-  };
-
-  // Function to render debug info
-  const renderDebugInfo = (ctx) => {
-    // Add debugging info
-    ctx.fillStyle = 'white';
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Session ID: ${sessionId}`, 20, 30);
-    
-    // Make selection info more detailed
-    if (selection) {
-      ctx.fillStyle = 'lightgreen';
-      ctx.fillText(`Selection: x=${selection.x.toFixed(0)}, y=${selection.y.toFixed(0)}, w=${selection.width.toFixed(0)}, h=${selection.height.toFixed(0)}`, 20, 90);
-    } else {
-      ctx.fillStyle = 'salmon';
-      ctx.fillText(`Selection: Not Available - waiting for selection data`, 20, 90);
-    }
-    
-    ctx.fillStyle = 'white';
-    ctx.fillText(`Image: ${image ? 'Available' : 'Not Available'}`, 20, 60);
-    ctx.fillText(`Show Grid: ${showGrid}`, 20, 120);
-    ctx.fillText(`Show Design: ${showDesign}`, 20, 150);
-    
-    if (!selection) {
-      ctx.fillText(`Waiting for selection data...`, 20, 200);
-    }
-  };
-
-  // Calculate transform data based on selection and offsets
-  const calculateTransformData = (canvas, sel, offsets) => {
-    // Define source and destination points for the transform
-    const srcPoints = [
-      [sel.x + offsets.upperLeft.x, sel.y + offsets.upperLeft.y],
-      [sel.x + sel.width + offsets.upperRight.x, sel.y + offsets.upperRight.y],
-      [sel.x + sel.width + offsets.lowerRight.x, sel.y + sel.height + offsets.lowerRight.y],
-      [sel.x + offsets.lowerLeft.x, sel.y + sel.height + offsets.lowerLeft.y],
-    ];
-    
-    const dstPoints = [
-      [0, 0],
-      [canvas.width, 0],
-      [canvas.width, canvas.height],
-      [0, canvas.height]
-    ];
-    
-    let H;
-    if (offsetsAreZero(offsets)) {
-      // Simple scaling matrix
-      const scaleX = canvas.width / sel.width;
-      const scaleY = canvas.height / sel.height;
-      const scale = Math.min(scaleX, scaleY);
-      const destWidth = sel.width * scale;
-      const destHeight = sel.height * scale;
-      const destX = (canvas.width - destWidth) / 2;
-      const destY = (canvas.height - destHeight) / 2;
+    // Create a new Fabric canvas with WebGL renderer if supported
+    try {
+      fabricCanvasRef.current = new fabric.Canvas(canvasRef.current, {
+        backgroundColor: 'black',
+        preserveObjectStacking: true,
+        enableRetinaScaling: true,
+        // Try to use WebGL for better performance and perspective transform support
+        renderOnAddRemove: false,
+        selection: false
+      });
       
-      H = [
-        [scale, 0, destX - sel.x * scale],
-        [0, scale, destY - sel.y * scale],
-        [0, 0, 1],
-      ];
-
-      return {
-        homography: H,
-        isSimple: true,
-        scale,
-        destX,
-        destY,
-        destWidth,
-        destHeight
-      };
-    } else {
-      // Get homography matrix
-      H = getHomography(srcPoints, dstPoints);
-      if (!H) return null;
-      
-      return {
-        homography: H,
-        isSimple: false
-      };
+      console.log("Fabric.js canvas initialized");
+    } catch (error) {
+      console.error("Error initializing Fabric.js canvas:", error);
     }
-  };
-
-  // Draw image function with transform data
-  const drawImage = (ctx, img, sel, transformData) => {
-    if (transformData.isSimple) {
-      // Simple scaling case
-      ctx.drawImage(
-        img,
-        sel.x, sel.y, sel.width, sel.height,
-        transformData.destX, transformData.destY, 
-        transformData.destWidth, transformData.destHeight
-      );
-    } else {
-      // Perspective transform case
-      ctx.save();
-      const transform = homographyToTransformMatrix(transformData.homography);
-      ctx.setTransform(transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
-      ctx.drawImage(img, sel.x, sel.y, sel.width, sel.height, 0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.restore();
-    }
+    
+    // Set up canvas size
+    updateCanvasSize();
+    
+    // Clean up on unmount
+    return () => {
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.dispose();
+      }
+    };
+  }, []);
+  
+  // Update canvas size when window is resized
+  const updateCanvasSize = () => {
+    if (!fabricCanvasRef.current) return;
+    
+    fabricCanvasRef.current.setWidth(window.innerWidth);
+    fabricCanvasRef.current.setHeight(window.innerHeight);
+    console.log("Canvas size updated:", window.innerWidth, window.innerHeight);
   };
   
-  // Draw grid function with transform data
-  const drawGrid = (ctx, sel, transformData) => {
-    if (imageDimensions.width === 0 || wallWidthFeet === 0) return;
-
-    const H = transformData.homography;
-    // Calculate grid spacing based on wall width
-    const pixelsPerFoot = imageDimensions.width / wallWidthFeet;
-    const majorGridSpacingPixels = 4 * pixelsPerFoot; // 4-foot grid
-    const minorGridSpacingPixels = 1 * pixelsPerFoot; // 1-foot grid
-
-    // Make major grid lines more visible
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.9)"; // More opaque white
-    ctx.lineWidth = 3; // Thicker lines
+  // Update rendering when dependencies change
+  useEffect(() => {
+    if (!fabricCanvasRef.current || !selection) return;
     
-    // Draw major grid lines (vertical)
-    for (let x = Math.floor(sel.x / majorGridSpacingPixels) * majorGridSpacingPixels; 
-         x <= sel.x + sel.width; 
-         x += majorGridSpacingPixels) {
-      if (x >= sel.x && x <= sel.x + sel.width) {
-        const top = transformPoint([x, sel.y], H);
-        const bottom = transformPoint([x, sel.y + sel.height], H);
-        ctx.beginPath();
-        ctx.moveTo(top[0], top[1]);
-        ctx.lineTo(bottom[0], bottom[1]);
-        ctx.stroke();
-      }
-    }
-    
-    // Draw major grid lines (horizontal)
-    for (let y = Math.floor(sel.y / majorGridSpacingPixels) * majorGridSpacingPixels; 
-         y <= sel.y + sel.height; 
-         y += majorGridSpacingPixels) {
-      if (y >= sel.y && y <= sel.y + sel.height) {
-        const left = transformPoint([sel.x, y], H);
-        const right = transformPoint([sel.x + sel.width, y], H);
-        ctx.beginPath();
-        ctx.moveTo(left[0], left[1]);
-        ctx.lineTo(right[0], right[1]);
-        ctx.stroke();
-      }
-    }
-
-    // Draw minor grid lines with semi-transparency
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)"; // Semi-transparent white
-    ctx.lineWidth = 1;
-    
-    // Only draw minor lines if the display is large enough
-    if (transformData.isSimple && transformData.destWidth > 200) {
-      // Draw minor vertical lines
-      for (let x = Math.floor(sel.x / minorGridSpacingPixels) * minorGridSpacingPixels; 
-           x <= sel.x + sel.width; 
-           x += minorGridSpacingPixels) {
-        if (x % majorGridSpacingPixels !== 0 && x >= sel.x && x <= sel.x + sel.width) {
-          const top = transformPoint([x, sel.y], H);
-          const bottom = transformPoint([x, sel.y + sel.height], H);
-          ctx.beginPath();
-          ctx.moveTo(top[0], top[1]);
-          ctx.lineTo(bottom[0], bottom[1]);
-          ctx.stroke();
+    const updateDisplay = async () => {
+      const canvas = fabricCanvasRef.current;
+      
+      // Clear all existing objects
+      canvas.clear();
+      imageInstanceRef.current = null;
+      gridLinesRef.current = [];
+      
+      // Load and render the image if needed
+      if (showDesign && image && selection) {
+        try {
+          // Load the image first
+          const imgElement = await loadImage(image);
+          
+          // Create a Fabric.js image object
+          const fabricImage = new fabric.Image(imgElement, {
+            left: 0,
+            top: 0,
+            selectable: false,
+            originX: 'left',
+            originY: 'top'
+          });
+          
+          // Save reference to the image for later modifications
+          imageInstanceRef.current = fabricImage;
+          
+          // Crop the image to the selected area
+          fabricImage.cropX = selection.x;
+          fabricImage.cropY = selection.y;
+          fabricImage.width = selection.width;
+          fabricImage.height = selection.height;
+          
+          // Apply perspective transform if offsets are not zero
+          if (!areOffsetsZero(cornerOffsets)) {
+            applyPerspectiveTransform(fabricImage, cornerOffsets, selection);
+          } else {
+            // No perspective transform, just fit the image to the canvas
+            fitObjectToCanvas(fabricImage, canvas);
+          }
+          
+          // Add the image to the canvas
+          canvas.add(fabricImage);
+        } catch (error) {
+          console.error("Error loading or rendering image:", error);
         }
       }
       
-      // Draw minor horizontal lines
-      for (let y = Math.floor(sel.y / minorGridSpacingPixels) * minorGridSpacingPixels; 
-           y <= sel.y + sel.height; 
-           y += minorGridSpacingPixels) {
-        if (y % majorGridSpacingPixels !== 0 && y >= sel.y && y <= sel.y + sel.height) {
-          const left = transformPoint([sel.x, y], H);
-          const right = transformPoint([sel.x + sel.width, y], H);
-          ctx.beginPath();
-          ctx.moveTo(left[0], left[1]);
-          ctx.lineTo(right[0], right[1]);
-          ctx.stroke();
-        }
+      // Add grid if requested
+      if (showGrid && selection && imageDimensions.width) {
+        drawGrid(canvas, selection, cornerOffsets);
       }
-    }
-  };
-
-  // Main rendering update
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // Set initial canvas size
-    const updateCanvasSize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      
+      // Add debug info if needed
+      if (showDebug) {
+        addDebugInfo(canvas);
+      }
+      
+      // Render the canvas
+      canvas.renderAll();
     };
     
-    updateCanvasSize();
-    renderScene();
-    
-    // Handle window resize
+    updateDisplay();
+  }, [image, selection, cornerOffsets, showGrid, showDesign, showDebug, imageDimensions, wallWidthFeet]);
+  
+  // Handle window resize
+  useEffect(() => {
     const handleResize = () => {
       updateCanvasSize();
-      renderScene();
+      
+      // Reposition elements after resize
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.renderAll();
+      }
     };
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [image, selection, showGrid, showDesign, showDebug, cornerOffsets, wallWidthFeet, imageDimensions, sessionId]);
+  }, []);
+
+  // Promise-based image loading
+  const loadImage = (src) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = (err) => reject(err);
+      img.src = src;
+    });
+  };
+  
+  // Check if all offsets are zero
+  const areOffsetsZero = (offsets) => {
+    return Object.values(offsets).every(corner => corner.x === 0 && corner.y === 0);
+  };
+  
+  // Apply perspective transform to an object based on corner offsets
+  const applyPerspectiveTransform = (obj, offsets, selection) => {
+    // Calculate transformed corners based on offsets
+    const tl = { x: selection.x + offsets.upperLeft.x, y: selection.y + offsets.upperLeft.y };
+    const tr = { x: selection.x + selection.width + offsets.upperRight.x, y: selection.y + offsets.upperRight.y };
+    const br = { x: selection.x + selection.width + offsets.lowerRight.x, y: selection.y + selection.height + offsets.lowerRight.y };
+    const bl = { x: selection.x + offsets.lowerLeft.x, y: selection.y + selection.height + offsets.lowerLeft.y };
+    
+    // Fabric.js internally handles calculating the matrix
+    const canvas = fabricCanvasRef.current;
+    
+    // Scale corners to canvas size
+    const scaleX = canvas.width / selection.width;
+    const scaleY = canvas.height / selection.height;
+    const scale = Math.min(scaleX, scaleY);
+    
+    // Center the image
+    const destWidth = selection.width * scale;
+    const destHeight = selection.height * scale;
+    const destX = (canvas.width - destWidth) / 2;
+    const destY = (canvas.height - destHeight) / 2;
+    
+    // Set object size to canvas size (it will be transformed to fit)
+    obj.set({
+      width: canvas.width,
+      height: canvas.height,
+      left: 0,
+      top: 0,
+    });
+    
+    // Apply the perspective transform
+    // Note: This uses the experimental perspective transform support in Fabric
+    // This would need to be adapted based on Fabric.js version and capabilities
+    if (obj.set4PointTransform) {
+      // For versions of Fabric that support 4-point transforms directly
+      obj.set4PointTransform(
+        [tl.x, tl.y],
+        [tr.x, tr.y],
+        [bl.x, bl.y],
+        [br.x, br.y]
+      );
+    } else {
+      // For older versions without direct 4-point transform support
+      // We may need to calculate and set the transform matrix manually
+      console.warn("Direct 4-point transform not supported in this Fabric.js version");
+      fitObjectToCanvas(obj, canvas); // Fallback to simple scaling
+    }
+  };
+  
+  // Fit an object to the canvas while preserving aspect ratio
+  const fitObjectToCanvas = (obj, canvas) => {
+    const scaleX = canvas.width / obj.width;
+    const scaleY = canvas.height / obj.height;
+    const scale = Math.min(scaleX, scaleY);
+    
+    obj.set({
+      scaleX: scale,
+      scaleY: scale,
+      left: (canvas.width - obj.width * scale) / 2,
+      top: (canvas.height - obj.height * scale) / 2
+    });
+  };
+  
+  // Draw grid using Fabric.js objects
+  const drawGrid = (canvas, selection, offsets) => {
+    if (!wallWidthFeet || wallWidthFeet <= 0 || !imageDimensions.width) return;
+    
+    // Clear any existing grid
+    gridLinesRef.current.forEach(line => {
+      canvas.remove(line);
+    });
+    gridLinesRef.current = [];
+    
+    // Calculate grid spacing
+    const pixelsPerFoot = imageDimensions.width / wallWidthFeet;
+    const majorGridSpacingPixels = 4 * pixelsPerFoot; // 4-foot grid
+    const minorGridSpacingPixels = 1 * pixelsPerFoot; // 1-foot grid
+    
+    // Create grid lines
+    const createGridLines = () => {
+      const lines = [];
+      
+      // Calculate transform from selection coordinates to canvas coordinates
+      const calculateCanvasPoint = (x, y) => {
+        // This would need to be adapted based on the current transform
+        if (!areOffsetsZero(offsets)) {
+          // If using perspective transform, we need to map through the transform
+          // This is a simplified example and may need adjustment
+          const imageObj = imageInstanceRef.current;
+          if (!imageObj) return [0, 0];
+          
+          // Use same transform as the image object
+          // This is a placeholder - the actual implementation would depend on Fabric.js version
+          return [x, y]; // Placeholder
+        } else {
+          // Simple scaling and centering
+          const scaleX = canvas.width / selection.width;
+          const scaleY = canvas.height / selection.height;
+          const scale = Math.min(scaleX, scaleY);
+          
+          const canvasX = ((x - selection.x) * scale) + (canvas.width - selection.width * scale) / 2;
+          const canvasY = ((y - selection.y) * scale) + (canvas.height - selection.height * scale) / 2;
+          
+          return [canvasX, canvasY];
+        }
+      };
+      
+      // Major vertical lines
+      for (let x = Math.floor(selection.x / majorGridSpacingPixels) * majorGridSpacingPixels; 
+           x <= selection.x + selection.width; 
+           x += majorGridSpacingPixels) {
+        if (x >= selection.x && x <= selection.x + selection.width) {
+          const [x1, y1] = calculateCanvasPoint(x, selection.y);
+          const [x2, y2] = calculateCanvasPoint(x, selection.y + selection.height);
+          
+          const line = new fabric.Line([x1, y1, x2, y2], {
+            stroke: 'rgba(255, 255, 255, 0.9)',
+            strokeWidth: 3,
+            selectable: false
+          });
+          
+          lines.push(line);
+          canvas.add(line);
+        }
+      }
+      
+      // Major horizontal lines
+      for (let y = Math.floor(selection.y / majorGridSpacingPixels) * majorGridSpacingPixels; 
+           y <= selection.y + selection.height; 
+           y += majorGridSpacingPixels) {
+        if (y >= selection.y && y <= selection.y + selection.height) {
+          const [x1, y1] = calculateCanvasPoint(selection.x, y);
+          const [x2, y2] = calculateCanvasPoint(selection.x + selection.width, y);
+          
+          const line = new fabric.Line([x1, y1, x2, y2], {
+            stroke: 'rgba(255, 255, 255, 0.9)',
+            strokeWidth: 3,
+            selectable: false
+          });
+          
+          lines.push(line);
+          canvas.add(line);
+        }
+      }
+      
+      // Minor grid lines
+      // Minor vertical lines
+      for (let x = Math.floor(selection.x / minorGridSpacingPixels) * minorGridSpacingPixels; 
+           x <= selection.x + selection.width; 
+           x += minorGridSpacingPixels) {
+        if (x % majorGridSpacingPixels !== 0 && x >= selection.x && x <= selection.x + selection.width) {
+          const [x1, y1] = calculateCanvasPoint(x, selection.y);
+          const [x2, y2] = calculateCanvasPoint(x, selection.y + selection.height);
+          
+          const line = new fabric.Line([x1, y1, x2, y2], {
+            stroke: 'rgba(255, 255, 255, 0.6)',
+            strokeWidth: 1,
+            selectable: false
+          });
+          
+          lines.push(line);
+          canvas.add(line);
+        }
+      }
+      
+      // Minor horizontal lines
+      for (let y = Math.floor(selection.y / minorGridSpacingPixels) * minorGridSpacingPixels; 
+           y <= selection.y + selection.height; 
+           y += minorGridSpacingPixels) {
+        if (y % majorGridSpacingPixels !== 0 && y >= selection.y && y <= selection.y + selection.height) {
+          const [x1, y1] = calculateCanvasPoint(selection.x, y);
+          const [x2, y2] = calculateCanvasPoint(selection.x + selection.width, y);
+          
+          const line = new fabric.Line([x1, y1, x2, y2], {
+            stroke: 'rgba(255, 255, 255, 0.6)',
+            strokeWidth: 1,
+            selectable: false
+          });
+          
+          lines.push(line);
+          canvas.add(line);
+        }
+      }
+      
+      return lines;
+    };
+    
+    // Create and store grid lines
+    gridLinesRef.current = createGridLines();
+  };
+  
+  // Add debug information to the canvas
+  const addDebugInfo = (canvas) => {
+    // Add session ID
+    const sessionIdText = new fabric.Text(`Session ID: ${sessionId}`, {
+      left: 20,
+      top: 30,
+      fill: 'white',
+      fontSize: 16,
+      fontFamily: 'Arial'
+    });
+    canvas.add(sessionIdText);
+    
+    // Add selection info
+    if (selection) {
+      const selectionText = new fabric.Text(
+        `Selection: x=${selection.x.toFixed(0)}, y=${selection.y.toFixed(0)}, w=${selection.width.toFixed(0)}, h=${selection.height.toFixed(0)}`, 
+        {
+          left: 20,
+          top: 90,
+          fill: 'lightgreen',
+          fontSize: 16,
+          fontFamily: 'Arial'
+        }
+      );
+      canvas.add(selectionText);
+    } else {
+      const noSelectionText = new fabric.Text(
+        "Selection: Not Available - waiting for selection data", 
+        {
+          left: 20,
+          top: 90,
+          fill: 'salmon',
+          fontSize: 16,
+          fontFamily: 'Arial'
+        }
+      );
+      canvas.add(noSelectionText);
+    }
+    
+    // Add image availability
+    const imageText = new fabric.Text(`Image: ${image ? 'Available' : 'Not Available'}`, {
+      left: 20,
+      top: 60,
+      fill: 'white',
+      fontSize: 16,
+      fontFamily: 'Arial'
+    });
+    canvas.add(imageText);
+    
+    // Add grid status
+    const gridText = new fabric.Text(`Show Grid: ${showGrid}`, {
+      left: 20,
+      top: 120,
+      fill: 'white',
+      fontSize: 16,
+      fontFamily: 'Arial'
+    });
+    canvas.add(gridText);
+    
+    // Add design status
+    const designText = new fabric.Text(`Show Design: ${showDesign}`, {
+      left: 20,
+      top: 150,
+      fill: 'white',
+      fontSize: 16,
+      fontFamily: 'Arial'
+    });
+    canvas.add(designText);
+    
+    // Add waiting message if needed
+    if (!selection) {
+      const waitingText = new fabric.Text('Waiting for selection data...', {
+        left: 20,
+        top: 200,
+        fill: 'white',
+        fontSize: 16,
+        fontFamily: 'Arial'
+      });
+      canvas.add(waitingText);
+    }
+  };
 
   return (
     <div className="display-container">

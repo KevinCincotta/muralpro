@@ -26,6 +26,7 @@ function Setup({
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [activeTab, setActiveTab] = useState(0);
   const [selectedCorner, setSelectedCorner] = useState("upperLeft");
+  const [selection, setSelection] = useState(null);
 
   useEffect(() => {
     const canvasElement = canvasRef.current;
@@ -67,13 +68,14 @@ function Setup({
     const majorGridSpacingPixels = majorGridSpacingFeet * pixelsPerFoot;
     const scaledMajorGridSpacing = majorGridSpacingPixels * scaleFactor;
 
+    // Draw major grid lines (vertical)
     for (let x = 0; x <= imageWidth; x += majorGridSpacingPixels) {
       const scaledX = x * scaleFactor;
       if (scaledX <= canvasWidth) {
         gridLines.push(
           new fabric.Line([scaledX, 0, scaledX, canvasHeight], {
-            stroke: "white",
-            strokeWidth: 4,
+            stroke: "rgba(255, 255, 255, 0.9)", // More opaque white to match display
+            strokeWidth: 3, // Thicker lines to match display
             selectable: false,
             evented: false,
           })
@@ -81,13 +83,14 @@ function Setup({
       }
     }
 
+    // Draw major grid lines (horizontal)
     for (let y = 0; y <= imageHeight; y += majorGridSpacingPixels) {
       const scaledY = y * scaleFactor;
       if (scaledY <= canvasHeight) {
         gridLines.push(
           new fabric.Line([0, scaledY, canvasWidth, scaledY], {
-            stroke: "white",
-            strokeWidth: 4,
+            stroke: "rgba(255, 255, 255, 0.9)", // More opaque white to match display
+            strokeWidth: 3, // Thicker lines to match display
             selectable: false,
             evented: false,
           })
@@ -95,6 +98,7 @@ function Setup({
       }
     }
 
+    // Draw minor grid lines (vertical)
     const minorGridSpacingPixels = minorGridSpacingFeet * pixelsPerFoot;
     const scaledMinorGridSpacing = minorGridSpacingPixels * scaleFactor;
 
@@ -104,8 +108,8 @@ function Setup({
         if (scaledX <= canvasWidth) {
           gridLines.push(
             new fabric.Line([scaledX, 0, scaledX, canvasHeight], {
-              stroke: "white",
-              strokeWidth: 2,
+              stroke: "rgba(255, 255, 255, 0.6)", // Semi-transparent white to match display
+              strokeWidth: 1, // Thinner lines for minor grid
               selectable: false,
               evented: false,
             })
@@ -114,14 +118,15 @@ function Setup({
       }
     }
 
+    // Draw minor grid lines (horizontal)
     for (let y = 0; y <= imageHeight; y += minorGridSpacingPixels) {
       if (y % majorGridSpacingPixels !== 0) {
         const scaledY = y * scaleFactor;
         if (scaledY <= canvasHeight) {
           gridLines.push(
             new fabric.Line([0, scaledY, canvasWidth, scaledY], {
-              stroke: "white",
-              strokeWidth: 2,
+              stroke: "rgba(255, 255, 255, 0.6)", // Semi-transparent white to match display
+              strokeWidth: 1, // Thinner lines for minor grid
               selectable: false,
               evented: false,
             })
@@ -223,12 +228,14 @@ function Setup({
         rect.set({ height: newHeight / scaleX, scaleY: scaleX });
         rect.setCoords();
 
-        onSelection({
+        const newSelection = {
           x: left / scale,
           y: top / scale,
           width: newWidth / scale,
           height: newHeight / scale,
-        });
+        };
+        setSelection(newSelection);
+        onSelection(newSelection);
       });
 
       rect.on("moving", () => {
@@ -236,12 +243,14 @@ function Setup({
         const newWidth = width * scaleX;
         const newHeight = (newWidth * 9) / 16;
 
-        onSelection({
+        const newSelection = {
           x: left / scale,
           y: top / scale,
           width: newWidth / scale,
           height: newHeight / scale,
-        });
+        };
+        setSelection(newSelection);
+        onSelection(newSelection);
       });
 
       rect.on("scaling", () => {
@@ -249,24 +258,28 @@ function Setup({
         const newWidth = width * scaleX;
         const newHeight = (newWidth * 9) / 16;
 
-        onSelection({
+        const newSelection = {
           x: left / scale,
           y: top / scale,
           width: newWidth / scale,
           height: newHeight / scale,
-        });
+        };
+        setSelection(newSelection);
+        onSelection(newSelection);
       });
 
       fabricCanvas.add(rect);
       fabricCanvas.setActiveObject(rect);
       fabricCanvas.renderAll();
 
-      onSelection({
+      const initialSelection = {
         x: margin, // Include margin in initial selection
         y: imgHeight - rectHeight - margin, // Include margin in initial selection
         width: rectWidth,
         height: rectHeight,
-      });
+      };
+      setSelection(initialSelection);
+      onSelection(initialSelection);
     };
   };
 
@@ -364,6 +377,19 @@ function Setup({
     });
   };
 
+  // Add this helper function to convert feet to feet and inches
+  const feetToFeetAndInches = (feet) => {
+    const wholeFeet = Math.floor(feet);
+    const inches = Math.round((feet - wholeFeet) * 12);
+    
+    // Handle case where inches equals 12
+    if (inches === 12) {
+      return `${wholeFeet + 1}' 0"`;
+    }
+    
+    return `${wholeFeet}' ${inches}"`;
+  };
+
   return (
     <div className="setup-container">
       <div className="tabs">
@@ -429,6 +455,12 @@ function Setup({
                   />
                 </label>
               </div>
+              
+              {selection && (
+                <div className="image-info">
+                  <p>Projection dimensions: {feetToFeetAndInches(selection.width / imageDimensions.width * wallWidthFeet)} × {feetToFeetAndInches(selection.height / imageDimensions.width * wallWidthFeet)}</p>
+                </div>
+              )}
             </div>
             
             <div className="visibility-controls">
