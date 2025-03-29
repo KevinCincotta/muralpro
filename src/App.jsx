@@ -181,6 +181,7 @@ function MainContent() {
         onImageLoad={handleImageLoad}
         onSelection={handleSelection}
         wallWidthFeet={wallWidthFeet}
+        setWallWidthFeet={setWallWidthFeet}
         showGrid={showGrid}
         setShowGrid={setShowGrid}
         showDesign={showDesign}
@@ -189,6 +190,7 @@ function MainContent() {
         setShowDebug={setShowDebug}
         cornerOffsets={cornerOffsets}
         setCornerOffsets={setCornerOffsets}
+        openDisplayWindow={openDisplayWindow}
       />
     </div>
   );
