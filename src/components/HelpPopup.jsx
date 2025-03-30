@@ -68,7 +68,7 @@ function HelpPopup({ isOpen, onClose }) {
                     <section className="help-section">
                         <h3>👋 Welcome to MuralPro</h3>
                         <p>
-                            MuralPro is a tool for projecting designs onto walls to help you create accurate murals.
+                            MuralPro is a tool for for muralists to project and trace designs onto walls.
                             It compensates for keystone distortion and helps you maintain proper proportions in your artwork.
                         </p>
                     </section>
@@ -128,7 +128,6 @@ function HelpPopup({ isOpen, onClose }) {
                             <li>Press "D" to toggle the design off to focus on grid adjustments.</li>
                             <li>Switch to the Corrections tab to fix any keystone distortion.</li>
                             <li>Use the arrow buttons to adjust each corner until grid lines appear parallel.</li>
-                            <li>Aim for square grid cells that are approximately 1 foot apart on your wall.</li>
                         </ol>
                     </section>
 
@@ -136,17 +135,15 @@ function HelpPopup({ isOpen, onClose }) {
                         <h3>💡 Tips</h3>
                         <ul>
                             <li>Use larger adjustment steps (100px) for coarse adjustments, then smaller values for fine-tuning.</li>
-                            <li>Higher mesh density generally gives smoother distortion correction.</li>
-                            <li>The percentages shown in the preview represent how much of the display window's dimensions are being offset.</li>
+                            <li>Aim for square grid cells that are approximately 1 foot apart on your wall.</li>
+                            <li>You can adjust the Wall Width on the design tab to adjust the spacing of gridlines.</li>
+                            <li>For multi-section murals, consider marking key grid intersections on your wall to help with aligning the sections.</li>
                         </ul>
                     </section>
 
                     <section className="help-section">
                         <h3>🎨 Tracing Your Design</h3>
                         <ol>
-                            <li>You can adjust the Wall Width on the design tab to adjust the spacing of gridlines.</li>
-                            <li>When everything is correct, the grid should be 1 foot squared.</li>
-                            <li>For multi-section murals, consider marking key grid intersections on your wall to help with aligning the sections.</li>>
                             <li>Once everything is aligned, turn off the grid ("G" key).</li>
                             <li>Trace this section of your design onto the wall.</li>
                             <li>Repeat for other sections until your entire design is on the the wall.</li>

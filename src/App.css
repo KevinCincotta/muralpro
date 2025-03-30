@@ -8,6 +8,8 @@ body {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 h1 {
@@ -784,6 +786,9 @@ h1 {
 
 /* When in mobile or smaller screens, adjust the layout */
 @media (max-width: 768px) {
+  app-container {
+    height: 100%;
+  }
   .design-controls {
     flex-direction: column;
   }
@@ -810,12 +815,14 @@ h1 {
     margin-bottom: 20px;
   }
 }
+
 .checkbox-controls {
   display: flex;
   flex-direction: row;
   gap: 32px;
   margin-top: 0px;
 }
+
 .display-window-info {
   font-size: 14px;
   border-radius: 4px;
@@ -956,4 +963,98 @@ h1 {
 .help-icon {
   display: inline-block;
   line-height: 1;
+}
+
+/* Mobile notice styling */
+.mobile-notice {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.mobile-notice-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.mobile-notice h2 {
+  color: #007bff;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.mobile-notice-icon {
+  font-size: 64px;
+  margin: 1.5rem 0;
+}
+
+.mobile-notice p {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+  color: #555;
+}
+
+.mobile-notice ul {
+  text-align: left;
+  margin: 1rem auto;
+  max-width: 280px;
+  color: #555;
+}
+
+.mobile-notice li {
+  margin-bottom: 0.5rem;
+}
+
+.mobile-notice-footer {
+  margin-top: 1.5rem;
+  font-size: 14px;
+  color: #888;
+  font-style: italic;
+}
+
+/* Fix mobile height issues */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background-color: #f0f0f0;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+    min-height: 100vh;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Mobile notice styles that fill the viewport */
+  .mobile-notice {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    text-align: center;
+    margin-bottom: 10px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .mobile-notice-content {
+    max-width: 500px;
+    margin: 0 auto;
+    padding-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    justify-content: center;
+  }
 }

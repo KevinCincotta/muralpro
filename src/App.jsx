@@ -22,6 +22,26 @@ function App() {
 // The main page component with setup functionality
 function MainPage() {
   const [helpOpen, setHelpOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detect mobile device on component mount
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth < 768;
+      
+      setIsMobile(mobileRegex.test(userAgent) && isTouchDevice && isSmallScreen);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
   
   return (
     <div className="app-container">
@@ -35,7 +55,28 @@ function MainPage() {
           <span className="help-icon">?</span>
         </button>
       </header>
-      <MainContent />
+      
+      {isMobile ? (
+        <div className="mobile-notice">
+          <div className="mobile-notice-content">
+            <h2>Desktop App Required</h2>
+            <div className="mobile-notice-icon">💻</div>
+            <p>MuralPro is designed to be used on a laptop or desktop computer connected to a projector.</p>
+            <p>For the best experience:</p>
+            <ul>
+              <li>Use Chrome or Edge browser on a laptop</li>
+              <li>Connect your computer to a projector</li>
+              <li>Set up your projector as an extended display</li>
+            </ul>
+            <p className="mobile-notice-footer">
+              You can still view the help documentation on this device by clicking the ? button.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <MainContent />
+      )}
+      
       <HelpPopup isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
