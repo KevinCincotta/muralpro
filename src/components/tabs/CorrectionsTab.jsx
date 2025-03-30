@@ -10,7 +10,8 @@ function CorrectionsTab({
 }) {
   const { selection, imageDimensions } = useContext(StateContext);
   const [selectedCorner, setSelectedCorner] = useState("upperLeft");
-  const [adjustmentSize, setAdjustmentSize] = useState(5);
+  // Change default adjustment size to 100px
+  const [adjustmentSize, setAdjustmentSize] = useState(100);
 
   // Function to adjust the selected corner
   const adjustCorner = (direction) => {
@@ -181,6 +182,7 @@ function CorrectionsTab({
                   stroke={selectedCorner === corner ? "#dc3545" : "#007bff"}
                   strokeWidth={1}
                 />
+                {/* Only display percentage values, not pixel values */}
                 {hasDisplayWindow ? (
                   <text
                     x={labelX + 45}  // Adjusted for wider rectangle
@@ -190,8 +192,8 @@ function CorrectionsTab({
                     fontSize="12"
                     fontFamily="monospace"
                   >
-                    X: {offsets.x} ({getPercentageOffset(offsets.x, true)}%), 
-                    Y: {offsets.y} ({getPercentageOffset(offsets.y, false)}%)
+                    {getPercentageOffset(offsets.x, true)}%, 
+                    {getPercentageOffset(offsets.y, false)}%
                   </text>
                 ) : (
                   <text
@@ -202,7 +204,7 @@ function CorrectionsTab({
                     fontSize="12"
                     fontFamily="monospace"
                   >
-                    X: {offsets.x}, Y: {offsets.y}
+                    {corner}
                   </text>
                 )}
               </g>

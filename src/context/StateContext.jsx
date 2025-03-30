@@ -31,7 +31,8 @@ export function StateProvider({ children }) {
     lowerLeft: { x: 0, y: 0 },
     lowerRight: { x: 0, y: 0 },
   });
-  const [meshSize, setMeshSize] = useState(4);
+  // Default mesh size to 100
+  const [meshSize, setMeshSize] = useState(100);
 
   // Session ID for connecting windows
   const [sessionId] = useState(generateSessionId);
