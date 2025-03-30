@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="60" fill="#007BFF" />
+  
+  <!-- Projector body -->
+  <rect x="100" y="200" width="312" height="112" rx="16" fill="#FFFFFF" />
+  
+  <!-- Projector lens -->
+  <circle cx="360" cy="256" r="40" fill="#0056B3" />
+  <circle cx="360" cy="256" r="24" fill="#FFFFFF" />
+  
+  <!-- Projector buttons -->
+  <circle cx="140" cy="230" r="8" fill="#FF4136" />
+  <circle cx="140" cy="256" r="8" fill="#FFDC00" />
+  <circle cx="140" cy="282" r="8" fill="#2ECC40" />
+  
+  <!-- Light beams -->
+  <path d="M400 180L460 150" stroke="#FFD700" stroke-width="8" stroke-linecap="round" />
+  <path d="M400 332L460 362" stroke="#FFD700" stroke-width="8" stroke-linecap="round" />
+  
+  <!-- Grid lines on wall -->
+  <rect x="112" y="380" width="288" height="70" rx="4" fill="#FFFFFF" />
+  <line x1="172" y1="380" x2="172" y2="450" stroke="#0056B3" stroke-width="2" />
+  <line x1="232" y1="380" x2="232" y2="450" stroke="#0056B3" stroke-width="2" />
+  <line x1="292" y1="380" x2="292" y2="450" stroke="#0056B3" stroke-width="2" />
+  <line x1="352" y1="380" x2="352" y2="450" stroke="#0056B3" stroke-width="2" />
+  <line x1="112" y1="405" x2="400" y2="405" stroke="#0056B3" stroke-width="2" />
+  <line x1="112" y1="430" x2="400" y2="430" stroke="#0056B3" stroke-width="2" />
+</svg>
