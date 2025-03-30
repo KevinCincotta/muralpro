@@ -1,0 +1,108 @@
+.help-popup-overlay {
+  position: fixed;
+  z-index: 1000;
+  max-width: 700px;
+  width: calc(100% - 40px);
+  overflow: visible;
+  filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
+}
+
+.help-popup {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.help-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  border-bottom: 1px solid #ddd;
+  cursor: move;
+}
+
+.help-popup-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  line-height: 1;
+  font-weight: bold;
+}
+
+.close-button:hover {
+  color: #dc3545;
+}
+
+.help-popup-content {
+  padding: 15px;
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.help-section {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+
+.help-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.help-section h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #007bff;
+  font-size: 16px;
+}
+
+.help-section p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.help-section ul, .help-section ol {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+
+.help-section li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.sub-list {
+  margin-top: 5px !important;
+  margin-bottom: 5px !important;
+}
+
+.sub-list li {
+  margin-bottom: 4px;
+}
+
+@media (max-width: 768px) {
+  .help-popup-overlay {
+    width: 90%;
+    max-width: 90%;
+    left: 5% !important;
+    top: 5% !important;
+  }
+  
+  .help-popup-content {
+    max-height: 60vh;
+  }
+}

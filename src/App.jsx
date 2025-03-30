@@ -4,6 +4,7 @@ import Setup from "./components/Setup";
 import DisplayPage from "./pages/DisplayPage";
 import { StateProvider, StateContext } from "./context/StateContext";
 import "./App.css";
+import HelpPopup from "./components/HelpPopup";
 
 function App() {
   return (
@@ -20,10 +21,22 @@ function App() {
 
 // The main page component with setup functionality
 function MainPage() {
+  const [helpOpen, setHelpOpen] = useState(false);
+  
   return (
     <div className="app-container">
-      <h1>MuralPro</h1>
+      <header className="app-header">
+        <h1>MuralPro</h1>
+        <button 
+          className="help-button" 
+          onClick={() => setHelpOpen(prev => !prev)}
+          title="Show Help"
+        >
+          <span className="help-icon">?</span>
+        </button>
+      </header>
       <MainContent />
+      <HelpPopup isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

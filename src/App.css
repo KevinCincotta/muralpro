@@ -919,3 +919,41 @@ h1 {
   border-color: #007bff;
   font-weight: bold;
 }
+
+/* App header styling */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+/* Help button styling */
+.help-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 18px;
+  transition: background-color 0.2s ease;
+}
+
+.help-button:hover {
+  background-color: #0056b3;
+}
+
+.help-icon {
+  display: inline-block;
+  line-height: 1;
+}
