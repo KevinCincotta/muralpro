@@ -22,7 +22,7 @@ export function StateProvider({ children }) {
   const [selection, setSelection] = useState(null);
   const [wallWidthFeet, setWallWidthFeet] = useState(12);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
-  const [showGrid, setShowGrid] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
   const [showDesign, setShowDesign] = useState(true);
   const [showDebug, setShowDebug] = useState(false);
   const [cornerOffsets, setCornerOffsets] = useState({

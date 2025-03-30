@@ -56,7 +56,6 @@ function MainContent() {
     setImage(newImage);
     setImageDimensions(dimensions);
     setSelection(null);
-    setShowGrid(false);
     setShowDesign(true);
     setCornerOffsets({
       upperLeft: { x: 0, y: 0 },
