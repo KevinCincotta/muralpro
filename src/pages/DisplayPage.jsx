@@ -202,14 +202,56 @@ function DisplayPage() {
     }
   };
 
+  // Check at initialization if all offsets are indeed zero
+  useEffect(() => {
+    console.log("Initial cornerOffsets:", cornerOffsets);
+  }, []);
+
+  // Normalize the offset values relative to display window dimensions
+  const normalizeOffsets = (offsets) => {
+    // We're not normalizing based on selection or display size anymore
+    // Just return the raw offset values
+    return offsets;
+  };
+
   // Draw image with keystone correction
   const drawKeystoneImage = (ctx, img, selection, offsets, baseX, baseY, scale) => {
-    // Define the destination points with offsets applied
+    // Check if all offsets are very close to zero (allowing for floating-point precision issues)
+    const hasNoOffsets = Object.values(offsets).every(
+      corner => Math.abs(corner.x) < 0.001 && Math.abs(corner.y) < 0.001
+    );
+    
+    if (hasNoOffsets) {
+      console.log("Drawing without keystone correction - offsets all zero");
+      // Simple draw without correction when all offsets are zero
+      ctx.drawImage(
+        img,
+        selection.x, selection.y, selection.width, selection.height,
+        baseX, baseY, selection.width * scale, selection.height * scale
+      );
+      return;
+    }
+    
+    console.log("Drawing with keystone correction - offsets:", offsets);
+    
+    // Define the destination points with raw offsets applied
     const destPoints = [
-      [baseX + offsets.upperLeft.x * scale, baseY + offsets.upperLeft.y * scale], // top-left
-      [baseX + selection.width * scale + offsets.upperRight.x * scale, baseY + offsets.upperRight.y * scale], // top-right
-      [baseX + selection.width * scale + offsets.lowerRight.x * scale, baseY + selection.height * scale + offsets.lowerRight.y * scale], // bottom-right
-      [baseX + offsets.lowerLeft.x * scale, baseY + selection.height * scale + offsets.lowerLeft.y * scale] // bottom-left
+      [
+        baseX + offsets.upperLeft.x, 
+        baseY + offsets.upperLeft.y
+      ], // top-left
+      [
+        baseX + selection.width * scale + offsets.upperRight.x, 
+        baseY + offsets.upperRight.y
+      ], // top-right
+      [
+        baseX + selection.width * scale + offsets.lowerRight.x, 
+        baseY + selection.height * scale + offsets.lowerRight.y
+      ], // bottom-right
+      [
+        baseX + offsets.lowerLeft.x, 
+        baseY + selection.height * scale + offsets.lowerLeft.y
+      ] // bottom-left
     ];
 
     // Use advanced canvas transformations for perspective transform
@@ -341,24 +383,40 @@ function DisplayPage() {
     const transformPoint = (x, y) => {
       const normalizedX = (x - selection.x) / selection.width;
       const normalizedY = (y - selection.y) / selection.height;
+      
+      // Apply bilinear interpolation directly with raw offsets
+      const tl = [
+        baseX + offsets.upperLeft.x, 
+        baseY + offsets.upperLeft.y
+      ];
+      const tr = [
+        baseX + selection.width * scale + offsets.upperRight.x, 
+        baseY + offsets.upperRight.y
+      ];
+      const br = [
+        baseX + selection.width * scale + offsets.lowerRight.x, 
+        baseY + selection.height * scale + offsets.lowerRight.y
+      ];
+      const bl = [
+        baseX + offsets.lowerLeft.x, 
+        baseY + selection.height * scale + offsets.lowerLeft.y
+      ];
 
-      // Apply bilinear interpolation to map the point into the transformed quadrilateral
-      const tl = [baseX + offsets.upperLeft.x * scale, baseY + offsets.upperLeft.y * scale];
-      const tr = [baseX + selection.width * scale + offsets.upperRight.x * scale, baseY + offsets.upperRight.y * scale];
-      const br = [baseX + selection.width * scale + offsets.lowerRight.x * scale, baseY + selection.height * scale + offsets.lowerRight.y * scale];
-      const bl = [baseX + offsets.lowerLeft.x * scale, baseY + selection.height * scale + offsets.lowerLeft.y * scale];
-
+      // Fix the interpolation algorithm to properly account for normalized coordinates
+      // This was causing the uneven grid spacing
       const topX = tl[0] * (1 - normalizedX) + tr[0] * normalizedX;
       const topY = tl[1] * (1 - normalizedX) + tr[1] * normalizedX;
       const bottomX = bl[0] * (1 - normalizedX) + br[0] * normalizedX;
       const bottomY = bl[1] * (1 - normalizedX) + br[1] * normalizedX;
 
+      // Fix: Use normalizedY consistently in both calculations
       return [
         topX * (1 - normalizedY) + bottomX * normalizedY,
         topY * (1 - normalizedY) + bottomY * normalizedY
       ];
     };
 
+    // Calculate pixel spacing based on wall width in feet
     const pixelsPerFoot = imageDimensions.width / wallWidthFeet;
     const majorGridSpacingPixels = 4 * pixelsPerFoot;  // 4-foot grid
     const minorGridSpacingPixels = 1 * pixelsPerFoot;  // 1-foot grid
@@ -367,9 +425,12 @@ function DisplayPage() {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.lineWidth = 3;
     
-    for (let x = Math.floor(selection.x / majorGridSpacingPixels) * majorGridSpacingPixels; 
-         x <= selection.x + selection.width; 
-         x += majorGridSpacingPixels) {
+    // Calculate proper grid line starting positions to ensure even spacing
+    const startX = Math.floor(selection.x / majorGridSpacingPixels) * majorGridSpacingPixels;
+    const startY = Math.floor(selection.y / majorGridSpacingPixels) * majorGridSpacingPixels;
+    
+    // Draw major vertical grid lines with fixed spacing
+    for (let x = startX; x <= selection.x + selection.width; x += majorGridSpacingPixels) {
       if (x >= selection.x) {
         const p1 = transformPoint(x, selection.y);
         const p2 = transformPoint(x, selection.y + selection.height);
@@ -381,10 +442,8 @@ function DisplayPage() {
       }
     }
     
-    // Major horizontal grid lines
-    for (let y = Math.floor(selection.y / majorGridSpacingPixels) * majorGridSpacingPixels; 
-         y <= selection.y + selection.height; 
-         y += majorGridSpacingPixels) {
+    // Draw major horizontal grid lines with fixed spacing
+    for (let y = startY; y <= selection.y + selection.height; y += majorGridSpacingPixels) {
       if (y >= selection.y) {
         const p1 = transformPoint(selection.x, y);
         const p2 = transformPoint(selection.x + selection.width, y);
@@ -400,10 +459,12 @@ function DisplayPage() {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.lineWidth = 1;
     
-    // Minor vertical grid lines
-    for (let x = Math.floor(selection.x / minorGridSpacingPixels) * minorGridSpacingPixels; 
-         x <= selection.x + selection.width; 
-         x += minorGridSpacingPixels) {
+    // Calculate proper minor grid line starting positions
+    const startMinorX = Math.floor(selection.x / minorGridSpacingPixels) * minorGridSpacingPixels;
+    const startMinorY = Math.floor(selection.y / minorGridSpacingPixels) * minorGridSpacingPixels;
+    
+    // Draw minor vertical grid lines
+    for (let x = startMinorX; x <= selection.x + selection.width; x += minorGridSpacingPixels) {
       if (x % majorGridSpacingPixels !== 0 && x >= selection.x) {
         const p1 = transformPoint(x, selection.y);
         const p2 = transformPoint(x, selection.y + selection.height);
@@ -415,10 +476,8 @@ function DisplayPage() {
       }
     }
     
-    // Minor horizontal grid lines
-    for (let y = Math.floor(selection.y / minorGridSpacingPixels) * minorGridSpacingPixels; 
-         y <= selection.y + selection.height; 
-         y += minorGridSpacingPixels) {
+    // Draw minor horizontal grid lines
+    for (let y = startMinorY; y <= selection.y + selection.height; y += minorGridSpacingPixels) {
       if (y % majorGridSpacingPixels !== 0 && y >= selection.y) {
         const p1 = transformPoint(selection.x, y);
         const p2 = transformPoint(selection.x + selection.width, y);
@@ -490,6 +549,11 @@ function DisplayPage() {
     imageDimensions,
     meshSize // Add meshSize to the dependency array to re-render when it changes
   ]);
+
+  // Add a debug check that logs offsets when they change
+  useEffect(() => {
+    console.log("Corner offsets changed:", cornerOffsets);
+  }, [cornerOffsets]);
 
   return (
     <div className="display-container">

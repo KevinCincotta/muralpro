@@ -5,7 +5,8 @@ function CorrectionsTab({
   cornerOffsets,
   setCornerOffsets,
   meshSize,
-  setMeshSize
+  setMeshSize,
+  displayWindowSize // Ensure this prop is passed from parent component
 }) {
   const { selection, imageDimensions } = useContext(StateContext);
   const [selectedCorner, setSelectedCorner] = useState("upperLeft");
@@ -72,10 +73,13 @@ function CorrectionsTab({
     const baseX = (previewWidth - baseWidth) / 2;
     const baseY = (previewHeight - baseHeight) / 2;
     
-    // Scale factor for corner offsets
-    const scaleFactor = baseWidth / selection.width * 0.3;
+    // Determine if we have a valid display window to scale against
+    const hasDisplayWindow = displayWindowSize && displayWindowSize.width > 0 && displayWindowSize.height > 0;
     
-    // Calculate the distorted rectangle corners
+    // Scale factor for visual preview (not related to actual offset values)
+    const scaleFactor = 0.1; 
+    
+    // Calculate the distorted rectangle corners with proportional scaling
     const distortedCorners = {
       upperLeft: { 
         x: baseX + (cornerOffsets.upperLeft.x * scaleFactor),
@@ -107,6 +111,17 @@ function CorrectionsTab({
       }
     };
     
+    // Calculate percentage of offset relative to display dimensions
+    const getPercentageOffset = (offset, isX) => {
+      if (!hasDisplayWindow) return "";
+      
+      // Ensure we're using the correct dimension for the percentage calculation
+      const dimension = isX ? displayWindowSize.width : displayWindowSize.height;
+      if (!dimension) return "";
+      
+      return ((offset / dimension) * 100).toFixed(1);
+    };
+
     return (
       <div className="interactive-preview-container">
         <svg width={previewWidth} height={previewHeight} className="preview-svg">
@@ -166,16 +181,30 @@ function CorrectionsTab({
                   stroke={selectedCorner === corner ? "#dc3545" : "#007bff"}
                   strokeWidth={1}
                 />
-                <text
-                  x={labelX + 45}  // Adjusted for wider rectangle
-                  y={labelY + 15}
-                  textAnchor="middle"
-                  fill={selectedCorner === corner ? "#dc3545" : "#007bff"}
-                  fontSize="12"
-                  fontFamily="monospace"
-                >
-                  X: {offsets.x}, Y: {offsets.y}
-                </text>
+                {hasDisplayWindow ? (
+                  <text
+                    x={labelX + 45}  // Adjusted for wider rectangle
+                    y={labelY + 15}
+                    textAnchor="middle"
+                    fill={selectedCorner === corner ? "#dc3545" : "#007bff"}
+                    fontSize="12"
+                    fontFamily="monospace"
+                  >
+                    X: {offsets.x} ({getPercentageOffset(offsets.x, true)}%), 
+                    Y: {offsets.y} ({getPercentageOffset(offsets.y, false)}%)
+                  </text>
+                ) : (
+                  <text
+                    x={labelX + 45}  // Adjusted for wider rectangle
+                    y={labelY + 15}
+                    textAnchor="middle"
+                    fill={selectedCorner === corner ? "#dc3545" : "#007bff"}
+                    fontSize="12"
+                    fontFamily="monospace"
+                  >
+                    X: {offsets.x}, Y: {offsets.y}
+                  </text>
+                )}
               </g>
             </g>
           ))}

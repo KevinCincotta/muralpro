@@ -68,6 +68,7 @@ function Setup({
           setCornerOffsets={setCornerOffsets}
           meshSize={meshSize}
           setMeshSize={setMeshSize}
+          displayWindowSize={displayWindowSize} // Pass this prop to CorrectionsTab
         />
       </div>
     </div>

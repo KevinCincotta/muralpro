@@ -57,6 +57,8 @@ function MainContent() {
     setImageDimensions(dimensions);
     setSelection(null);
     setShowDesign(true);
+    
+    // Make sure we reset all corner offsets when loading a new image
     setCornerOffsets({
       upperLeft: { x: 0, y: 0 },
       upperRight: { x: 0, y: 0 },
