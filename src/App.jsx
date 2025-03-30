@@ -45,6 +45,8 @@ function MainContent() {
 
   const broadcastChannelRef = useRef(null);
   const displayWindowRef = useRef(null);
+  // Add state for display window dimensions
+  const [displayWindowSize, setDisplayWindowSize] = useState({ width: 0, height: 0 });
 
   const handleSelection = (newSelection) => {
     setSelection(newSelection);
@@ -190,6 +192,33 @@ function MainContent() {
     }, 0);
   };
 
+  // Set up the broadcast channel listener
+  useEffect(() => {
+    if (!sessionId) return;
+    
+    // Create a broadcast channel if it doesn't exist
+    if (!broadcastChannelRef.current) {
+      broadcastChannelRef.current = new BroadcastChannel(`muralpro-${sessionId}`);
+    }
+    
+    // Listen for messages from the display window
+    const handleMessage = (event) => {
+      if (event.data.action === 'WINDOW_DIMENSIONS') {
+        setDisplayWindowSize({
+          width: event.data.width,
+          height: event.data.height
+        });
+        console.log(`Received display window dimensions: ${event.data.width}×${event.data.height}`);
+      }
+    };
+    
+    broadcastChannelRef.current.addEventListener('message', handleMessage);
+    
+    return () => {
+      broadcastChannelRef.current.removeEventListener('message', handleMessage);
+    };
+  }, [sessionId]);
+
   return (
     <div>
       <div className="controls">
@@ -210,6 +239,11 @@ function MainContent() {
         >
           Open Display Window
         </button>
+        {displayWindowSize.width > 0 && (
+          <span className="display-size">
+            Display: {displayWindowSize.width} × {displayWindowSize.height}
+          </span>
+        )}
       </div>
       <Setup
         onImageLoad={handleImageLoad}
@@ -227,6 +261,7 @@ function MainContent() {
         meshSize={meshSize}
         setMeshSize={handleMeshSizeChange} // Use the handler to ensure broadcasting
         openDisplayWindow={openDisplayWindow}
+        displayWindowSize={displayWindowSize}
       />
     </div>
   );

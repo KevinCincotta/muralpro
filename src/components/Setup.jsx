@@ -18,7 +18,8 @@ function Setup({
   setCornerOffsets,
   openDisplayWindow,
   meshSize,
-  setMeshSize
+  setMeshSize,
+  displayWindowSize
 }) {
   const [activeTab, setActiveTab] = useState(0);
 
@@ -57,6 +58,7 @@ function Setup({
           showDebug={showDebug}
           setShowDebug={setShowDebug}
           openDisplayWindow={openDisplayWindow}
+          displayWindowSize={displayWindowSize}
         />
       </div>
       

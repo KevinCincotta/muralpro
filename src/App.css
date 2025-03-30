@@ -202,8 +202,8 @@ h1 {
 }
 
 .wall-width-control {
-  margin-top: 10px;
-  margin-bottom: 20px
+  margin-top: 0px;
+  margin-bottom: 10px
 }
 
 .dropzone {
@@ -771,4 +771,72 @@ h1 {
   .corrections-right-panel {
     margin-bottom: 20px;
   }
+}
+.checkbox-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 32px;
+  margin-top: 0px;
+}
+.display-window-info {
+  font-size: 14px;
+  border-radius: 4px;
+}
+
+.display-size {
+  margin-left: 15px;
+  font-size: 14px;
+  color: #555;
+  background-color: #f8f9fa;
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+
+/* Dimensions group box styling */
+.dimensions-group {
+  margin-top: 0px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  background-color: #f8f9fa;
+}
+
+.dimensions-group h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: #555;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.dimensions-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dimension-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.dimension-label {
+  font-weight: 500;
+  color: #666;
+}
+
+.dimension-value {
+  color: #333;
+  font-family: monospace;
+}
+
+/* Remove duplicate image-info styling since we're replacing it */
+.visibility-controls .image-info {
+  display: none;
+}
+
+.upload-section .image-info {
+  display: none;
 }

@@ -12,6 +12,7 @@ function DesignTab({
   setShowDesign, 
   showDebug, 
   setShowDebug,
+  displayWindowSize,
   openDisplayWindow
 }) {
   const canvasRef = useRef(null);
@@ -366,11 +367,6 @@ function DesignTab({
               <div>Click or drop image file here</div>
             </label>
           </div>
-          {imageDimensions.width > 0 && (
-            <div className="image-info">
-              <p>Image dimensions: {imageDimensions.width} × {imageDimensions.height} px</p>
-            </div>
-          )}
         </div>
         
         <div className="display-controls">
@@ -396,15 +392,7 @@ function DesignTab({
             </label>
           </div>
           
-          {selection && imageDimensions.width > 0 && (
-            <div className="image-info">
-              <p>Projection dimensions: {feetToFeetAndInches(selection.width / imageDimensions.width * wallWidthFeet)} × {feetToFeetAndInches(selection.height / imageDimensions.width * wallWidthFeet)}</p>
-            </div>
-          )}
-        </div>
-        
-        <div className="visibility-controls">
-          <h3>Select Layers</h3>
+          {/* Move checkboxes to the second column */}
           <div className="checkbox-controls">
             <label className="checkbox-label">
               <input
@@ -422,14 +410,46 @@ function DesignTab({
               />
               Show Design <span className="shortcut-key">D</span>
             </label>
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={showDebug}
-                onChange={() => setShowDebug(prev => !prev)}
-              />
-              Debug Info <span className="shortcut-key">I</span>
-            </label>
+            {/* Hide Debug Info checkbox */}
+          </div>
+        </div>
+        
+        <div className="visibility-controls">
+          {/* Remove the Select Layers title */}
+          {/* Dimensions group box */}
+          <div className="dimensions-group">
+            <h3>Dimensions</h3>
+            <div className="dimensions-content">
+              {imageDimensions.width > 0 && (
+                <div className="dimension-item">
+                  <span className="dimension-label">Image:</span>
+                  <span className="dimension-value">{imageDimensions.width} × {imageDimensions.height} px</span>
+                </div>
+              )}
+              
+              {selection && (
+                <div className="dimension-item">
+                  <span className="dimension-label">Selection:</span>
+                  <span className="dimension-value">{Math.round(selection.width)} × {Math.round(selection.height)} px</span>
+                </div>
+              )}
+              
+              {displayWindowSize.width > 0 && (
+                <div className="dimension-item">
+                  <span className="dimension-label">Display:</span>
+                  <span className="dimension-value">{displayWindowSize.width} × {displayWindowSize.height} px</span>
+                </div>
+              )}
+              
+              {selection && imageDimensions.width > 0 && (
+                <div className="dimension-item">
+                  <span className="dimension-label">Projection:</span>
+                  <span className="dimension-value">
+                    {feetToFeetAndInches(selection.width / imageDimensions.width * wallWidthFeet)} × {feetToFeetAndInches(selection.height / imageDimensions.width * wallWidthFeet)}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -21,6 +21,10 @@ function DisplayPage() {
     lowerRight: { x: 0, y: 0 },
   });
   const [meshSize, setMeshSize] = useState(4); // Default mesh size
+  const [windowDimensions, setWindowDimensions] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
   
   const canvasRef = useRef(null);
   const channelRef = useRef(null);
@@ -75,13 +79,36 @@ function DisplayPage() {
       if (newMeshSize !== undefined) setMeshSize(newMeshSize); // Use !== undefined to handle value 0
     };
     
-    window.opener?.postMessage({
-      type: 'DISPLAY_READY',
-      sessionId
-    }, '*');
+    // Send a ready message with window dimensions
+    sendWindowDimensions();
     
-    return () => channelRef.current?.close();
+    // Set up resize event listener to broadcast dimensions when window is resized
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+      sendWindowDimensions();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      channelRef.current?.close();
+    };
   }, [sessionId]);
+  
+  // Function to send window dimensions back to the main window
+  const sendWindowDimensions = () => {
+    if (channelRef.current && sessionId) {
+      channelRef.current.postMessage({
+        action: 'WINDOW_DIMENSIONS',
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    }
+  };
 
   // Load the image when it changes
   useEffect(() => {
@@ -442,6 +469,11 @@ function DisplayPage() {
     
     // Handle window resize
     const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+      sendWindowDimensions();
       renderCanvas();
     };
     
