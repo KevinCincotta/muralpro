@@ -8,54 +8,32 @@ function CorrectionsTab({
   setMeshSize
 }) {
   const { selection, imageDimensions } = useContext(StateContext);
-  const [selectedCorners, setSelectedCorners] = useState({
-    upperLeft: true,
-    upperRight: false,
-    lowerLeft: false,
-    lowerRight: false,
-  });
+  const [selectedCorner, setSelectedCorner] = useState("upperLeft");
   const [adjustmentSize, setAdjustmentSize] = useState(5);
 
-  // Function to handle corner selection checkboxes
-  const handleCornerSelection = (corner) => {
-    setSelectedCorners(prev => ({
+  // Function to adjust the selected corner
+  const adjustCorner = (direction) => {
+    setCornerOffsets(prev => {
+      const newOffsets = { ...prev };
+      if (direction === "up") {
+        newOffsets[selectedCorner].y -= adjustmentSize;
+      } else if (direction === "down") {
+        newOffsets[selectedCorner].y += adjustmentSize;
+      } else if (direction === "left") {
+        newOffsets[selectedCorner].x -= adjustmentSize;
+      } else if (direction === "right") {
+        newOffsets[selectedCorner].x += adjustmentSize;
+      }
+      return newOffsets;
+    });
+  };
+
+  // Function to reset selected corner
+  const resetSelectedCorner = () => {
+    setCornerOffsets(prev => ({
       ...prev,
-      [corner]: !prev[corner]
+      [selectedCorner]: { x: 0, y: 0 }
     }));
-  };
-
-  // Function to adjust the selected corners
-  const adjustCorners = (direction, amount = adjustmentSize) => {
-    setCornerOffsets(prev => {
-      const newOffsets = { ...prev };
-      for (const corner in selectedCorners) {
-        if (selectedCorners[corner]) {
-          if (direction === "up") {
-            newOffsets[corner].y -= amount;
-          } else if (direction === "down") {
-            newOffsets[corner].y += amount;
-          } else if (direction === "left") {
-            newOffsets[corner].x -= amount;
-          } else if (direction === "right") {
-            newOffsets[corner].x += amount;
-          }
-        }
-      }
-      return newOffsets;
-    });
-  };
-
-  // Function to reset selected corners
-  const resetSelectedCorners = () => {
-    setCornerOffsets(prev => {
-      const newOffsets = { ...prev };
-      for (const corner in selectedCorners) {
-        if (selectedCorners[corner]) {
-          newOffsets[corner] = { x: 0, y: 0 };
-        }
-      }
-      return newOffsets;
-    });
   };
 
   // Function to reset all corners
@@ -68,53 +46,63 @@ function CorrectionsTab({
     });
   };
 
-  // Update handleMeshSizeChange to directly use the prop function
   const handleMeshSizeChange = (e) => {
     const newMeshSize = parseInt(e.target.value);
-    console.log(`Mesh size changed to: ${newMeshSize}`);
     setMeshSize(newMeshSize);
   };
 
-  // Render the corrections preview
+  // Render the corrections preview with integrated corner selection
   const renderCorrectionsPreview = () => {
     if (!selection) return null;
     
-    // Canvas dimensions for the preview
-    const previewWidth = 280;
-    const previewHeight = 180;
+    // Canvas dimensions for the preview - make it wider and taller
+    const previewWidth = 480; // Increase width to avoid clipping
+    const previewHeight = 280; // Increase height to avoid clipping
     
     // Calculate the base rectangle (16:9 area)
     const aspectRatio = 16/9;
-    const baseWidth = previewWidth * 0.8;
+    const baseWidth = previewWidth * 0.5; // Make base rectangle smaller to leave more room for labels
     const baseHeight = baseWidth / aspectRatio;
     const baseX = (previewWidth - baseWidth) / 2;
     const baseY = (previewHeight - baseHeight) / 2;
     
-    // This scale factor is used to translate corner offsets to preview size
+    // Scale factor for corner offsets
     const scaleFactor = baseWidth / selection.width * 0.3;
     
     // Calculate the distorted rectangle corners
     const distortedCorners = {
       upperLeft: { 
         x: baseX + (cornerOffsets.upperLeft.x * scaleFactor),
-        y: baseY + (cornerOffsets.upperLeft.y * scaleFactor)
+        y: baseY + (cornerOffsets.upperLeft.y * scaleFactor),
+        labelX: baseX - 110, // Move label further left
+        labelY: baseY - 15,
+        offsets: cornerOffsets.upperLeft
       },
       upperRight: { 
         x: baseX + baseWidth + (cornerOffsets.upperRight.x * scaleFactor),
-        y: baseY + (cornerOffsets.upperRight.y * scaleFactor)
+        y: baseY + (cornerOffsets.upperRight.y * scaleFactor),
+        labelX: baseX + baseWidth + 20, // Move label further right
+        labelY: baseY - 15,
+        offsets: cornerOffsets.upperRight
       },
       lowerRight: { 
         x: baseX + baseWidth + (cornerOffsets.lowerRight.x * scaleFactor),
-        y: baseY + baseHeight + (cornerOffsets.lowerRight.y * scaleFactor)
+        y: baseY + baseHeight + (cornerOffsets.lowerRight.y * scaleFactor),
+        labelX: baseX + baseWidth + 20, // Move label further right
+        labelY: baseY + baseHeight + 25,
+        offsets: cornerOffsets.lowerRight
       },
       lowerLeft: { 
         x: baseX + (cornerOffsets.lowerLeft.x * scaleFactor),
-        y: baseY + baseHeight + (cornerOffsets.lowerLeft.y * scaleFactor)
+        y: baseY + baseHeight + (cornerOffsets.lowerLeft.y * scaleFactor),
+        labelX: baseX - 110, // Move label further left
+        labelY: baseY + baseHeight + 25,
+        offsets: cornerOffsets.lowerLeft
       }
     };
     
     return (
-      <div className="preview-canvas-container">
+      <div className="interactive-preview-container">
         <svg width={previewWidth} height={previewHeight} className="preview-svg">
           {/* Draw base rectangle */}
           <rect
@@ -141,25 +129,50 @@ function CorrectionsTab({
             fill="rgba(0, 123, 255, 0.1)"
           />
           
-          {/* Draw corner points */}
-          {Object.entries(distortedCorners).map(([key, {x, y}]) => (
-            <circle
-              key={key}
-              cx={x}
-              cy={y}
-              r={4}
-              fill={selectedCorners[key] ? "#dc3545" : "#007bff"}
-            />
+          {/* Draw interactive corner points with labels */}
+          {Object.entries(distortedCorners).map(([corner, {x, y, labelX, labelY, offsets}]) => (
+            <g key={corner}>
+              {/* Corner point */}
+              <circle
+                cx={x}
+                cy={y}
+                r={6}
+                fill={selectedCorner === corner ? "#dc3545" : "#007bff"}
+                stroke="#ffffff"
+                strokeWidth={1.5}
+                style={{ cursor: "pointer" }}
+                onClick={() => setSelectedCorner(corner)}
+              />
+              
+              {/* Corner offset label - now also clickable */}
+              <g 
+                className="corner-offset-label" 
+                onClick={() => setSelectedCorner(corner)}
+                style={{ cursor: "pointer" }}
+              >
+                <rect
+                  x={labelX}
+                  y={labelY}
+                  width={90}  // Wider rectangle
+                  height={22}
+                  rx={4}
+                  fill={selectedCorner === corner ? "rgba(220, 53, 69, 0.2)" : "rgba(0, 123, 255, 0.1)"}
+                  stroke={selectedCorner === corner ? "#dc3545" : "#007bff"}
+                  strokeWidth={1}
+                />
+                <text
+                  x={labelX + 45}  // Adjusted for wider rectangle
+                  y={labelY + 15}
+                  textAnchor="middle"
+                  fill={selectedCorner === corner ? "#dc3545" : "#007bff"}
+                  fontSize="12"
+                  fontFamily="monospace"
+                >
+                  X: {offsets.x}, Y: {offsets.y}
+                </text>
+              </g>
+            </g>
           ))}
-          
-          {/* Add labels */}
-          <text x={baseX} y={baseY - 10} fontSize="10" fill="#888">Original size</text>
-          <text x={baseX} y={baseHeight + baseY + 20} fontSize="10" fill="#007bff">Corrected output</text>
-          
-          {/* Add mesh size indicator */}
-          <text x={baseX + baseWidth - 60} y={baseHeight + baseY + 20} fontSize="10" fill="#555">
-            Mesh: {meshSize}×{meshSize}
-          </text>
         </svg>
       </div>
     );
@@ -167,9 +180,7 @@ function CorrectionsTab({
 
   return (
     <div className="corrections-tab">
-      <div className="corrections-left-panel">
-        <h3>Corners & Adjustments</h3>
-        
+      <div className="corrections-left-panel">       
         <div className="preview-container">
           {imageDimensions.width > 0 ? (
             renderCorrectionsPreview()
@@ -180,18 +191,22 @@ function CorrectionsTab({
           )}
         </div>
         
-        <div className="direction-controls">
-          <button onClick={() => adjustCorners("up")} className="direction-button up">↑</button>
-          <div className="horizontal-controls">
-            <button onClick={() => adjustCorners("left")} className="direction-button left">←</button>
-            <button onClick={() => adjustCorners("right")} className="direction-button right">→</button>
-          </div>
-          <button onClick={() => adjustCorners("down")} className="direction-button down">↓</button>
-        </div>
+        {/* Removed the selected-corner-info section */}
         
-        <div className="adjustment-sliders">
+        <div className="direction-controls">
+          <button onClick={() => adjustCorner("up")} className="direction-button up">↑</button>
+          <div className="horizontal-controls">
+            <button onClick={() => adjustCorner("left")} className="direction-button left">←</button>
+            <button onClick={() => adjustCorner("right")} className="direction-button right">→</button>
+          </div>
+          <button onClick={() => adjustCorner("down")} className="direction-button down">↓</button>
+        </div>
+      </div>
+      
+      <div className="corrections-right-panel">
+        <div className="adjustment-settings">
           <div className="slider-control">
-            <label>Adjustment Size: <span className="slider-value">{adjustmentSize}px</span></label>
+            <label>Adjustment Step Size: <span className="slider-value">{adjustmentSize}px</span></label>
             <input
               type="range"
               min="1"
@@ -214,36 +229,10 @@ function CorrectionsTab({
             />
           </div>
         </div>
-      </div>
-      
-      <div className="corrections-right-panel">
-        <h3>Corner Offsets</h3>
-        <div className="offsets-grid">
-          {Object.entries(cornerOffsets).map(([corner, { x, y }]) => (
-            <div 
-              key={corner} 
-              className={`offset-item ${selectedCorners[corner] ? 'selected' : ''}`}
-              onClick={() => handleCornerSelection(corner)}
-            >
-              <div className="offset-item-header">
-                <span className="corner-name">{corner.replace(/([A-Z])/g, ' $1').trim()}</span>
-                <div className="checkbox-indicator">
-                  <input
-                    type="checkbox"
-                    checked={selectedCorners[corner]}
-                    onChange={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-              </div>
-              <span className="offset-values">X: {x}, Y: {y}</span>
-            </div>
-          ))}
-        </div>
         
         <div className="reset-buttons">
-          <button onClick={resetSelectedCorners} className="reset-corner-button">
-            Reset Selected Corners
+          <button onClick={resetSelectedCorner} className="reset-corner-button">
+            Reset Selected Corner
           </button>
           <button onClick={resetAllCorners} className="reset-all-button">
             Reset All Corners

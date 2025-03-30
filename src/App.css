@@ -271,15 +271,15 @@ h1 {
 /* Corrections tab styles */
 .corrections-tab {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  overflow: visible;
+  grid-template-columns: 65% 25%; /* Give more space to left panel */
+  gap: 5%; /* Reduce gap to save space */
 }
 
 .corrections-left-panel,
 .corrections-right-panel {
   display: flex;
   flex-direction: column;
+  gap: 15px;
 }
 
 .corrections-left-panel h3,
@@ -297,14 +297,17 @@ h1 {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 0; /* Adjust spacing */
+  overflow: visible; /* Ensure container doesn't clip content */
+  width: 100%;
 }
 
 .preview-svg {
-  background-color: #fff;
+  background-color: #f9f9fa;
   border: 1px solid #ddd;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  max-width: 100%; /* Ensure SVG doesn't overflow container */
 }
 
 .corner-selection {
@@ -317,7 +320,6 @@ h1 {
 
 .preview-container {
   grid-column: 1 / -1;
-  margin-top: 20px;
   overflow: visible;
 }
 
@@ -739,9 +741,45 @@ h1 {
 }
 
 .preview-svg {
-  background-color: #f9f9f9;
+  background-color: #f9f9fa;
   border: 1px solid #ddd;
   border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  max-width: 100%; /* Ensure SVG doesn't overflow container */
+}
+
+/* New styles for the simplified corrections tab */
+.interactive-preview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  overflow: visible; /* Prevent clipping */
+}
+
+.selected-corner-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  margin-bottom: 15px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+}
+
+.selected-corner-info h4 {
+  margin: 0;
+  color: #495057;
+  font-size: 16px;
+}
+
+.adjustment-settings {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
 /* When in mobile or smaller screens, adjust the layout */
