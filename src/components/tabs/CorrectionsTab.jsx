@@ -46,6 +46,12 @@ function CorrectionsTab({
     });
   };
 
+  // Function to handle step size selection
+  const handleStepSizeChange = (e) => {
+    const newSize = parseInt(e.target.value, 10);
+    setAdjustmentSize(newSize);
+  };
+
   const handleMeshSizeChange = (e) => {
     const newMeshSize = parseInt(e.target.value);
     setMeshSize(newMeshSize);
@@ -207,14 +213,38 @@ function CorrectionsTab({
         <div className="adjustment-settings">
           <div className="slider-control">
             <label>Adjustment Step Size: <span className="slider-value">{adjustmentSize}px</span></label>
-            <input
-              type="range"
-              min="1"
-              max="20"
-              value={adjustmentSize}
-              onChange={(e) => setAdjustmentSize(parseInt(e.target.value))}
-              className="range-slider"
-            />
+            <div className="step-size-buttons">
+              <button 
+                className={`step-button ${adjustmentSize === 1 ? 'active' : ''}`} 
+                onClick={() => setAdjustmentSize(1)}
+              >
+                1px
+              </button>
+              <button 
+                className={`step-button ${adjustmentSize === 5 ? 'active' : ''}`} 
+                onClick={() => setAdjustmentSize(5)}
+              >
+                5px
+              </button>
+              <button 
+                className={`step-button ${adjustmentSize === 10 ? 'active' : ''}`} 
+                onClick={() => setAdjustmentSize(10)}
+              >
+                10px
+              </button>
+              <button 
+                className={`step-button ${adjustmentSize === 25 ? 'active' : ''}`} 
+                onClick={() => setAdjustmentSize(25)}
+              >
+                25px
+              </button>
+              <button 
+                className={`step-button ${adjustmentSize === 100 ? 'active' : ''}`} 
+                onClick={() => setAdjustmentSize(100)}
+              >
+                100px
+              </button>
+            </div>
           </div>
           
           <div className="slider-control">
@@ -222,7 +252,7 @@ function CorrectionsTab({
             <input
               type="range"
               min="2"
-              max="30"
+              max="100"
               value={meshSize}
               onChange={handleMeshSizeChange}
               className="range-slider"

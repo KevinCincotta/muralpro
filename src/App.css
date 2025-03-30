@@ -878,3 +878,44 @@ h1 {
 .upload-section .image-info {
   display: none;
 }
+
+/* Step size buttons styling */
+.step-size-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  margin-bottom: 30px;
+}
+
+.step-button {
+  flex: 1;
+  padding: 8px 0;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: monospace;
+  margin: 0 2px;
+  transition: all 0.2s ease;
+}
+
+.step-button:first-child {
+  border-radius: 4px 0 0 4px;
+  margin-left: 0;
+}
+
+.step-button:last-child {
+  border-radius: 0 4px 4px 0;
+  margin-right: 0;
+}
+
+.step-button:hover {
+  background-color: #e6e6e6;
+}
+
+.step-button.active {
+  background-color: #007bff;
+  color: #fff;
+  border-color: #007bff;
+  font-weight: bold;
+}
