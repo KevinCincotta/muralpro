@@ -39,6 +39,7 @@ function MainContent() {
     showDesign, setShowDesign,
     showDebug, setShowDebug, 
     cornerOffsets, setCornerOffsets,
+    meshSize, setMeshSize,
     sessionId 
   } = useAppState();
 
@@ -190,6 +191,8 @@ function MainContent() {
         setShowDebug={setShowDebug}
         cornerOffsets={cornerOffsets}
         setCornerOffsets={setCornerOffsets}
+        meshSize={meshSize}
+        setMeshSize={setMeshSize}
         openDisplayWindow={openDisplayWindow}
       />
     </div>

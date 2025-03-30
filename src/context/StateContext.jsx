@@ -31,6 +31,7 @@ export function StateProvider({ children }) {
     lowerLeft: { x: 0, y: 0 },
     lowerRight: { x: 0, y: 0 },
   });
+  const [meshSize, setMeshSize] = useState(4);
 
   // Session ID for connecting windows
   const [sessionId] = useState(generateSessionId);
@@ -49,7 +50,7 @@ export function StateProvider({ children }) {
   useEffect(() => {
     if (broadcastChannelRef.current) {
       console.log(`Broadcasting state update to channel muralpro-${sessionId}:`, {
-        image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign, showDebug, cornerOffsets
+        image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign, showDebug, cornerOffsets, meshSize
       });
       
       // Always broadcast current state, regardless of values
@@ -62,9 +63,10 @@ export function StateProvider({ children }) {
         showDesign,
         showDebug,
         cornerOffsets,
+        meshSize
       });
     }
-  }, [image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign, showDebug, cornerOffsets, sessionId]);
+  }, [image, selection, wallWidthFeet, imageDimensions, showGrid, showDesign, showDebug, cornerOffsets, meshSize, sessionId]);
 
   return (
     <StateContext.Provider
@@ -77,6 +79,7 @@ export function StateProvider({ children }) {
         showDesign, setShowDesign,
         showDebug, setShowDebug,
         cornerOffsets, setCornerOffsets,
+        meshSize, setMeshSize,
         sessionId, broadcastChannel: broadcastChannelRef.current
       }}
     >

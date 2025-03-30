@@ -25,7 +25,14 @@ function Setup({
   const [scaleFactor, setScaleFactor] = useState(1);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [activeTab, setActiveTab] = useState(0);
-  const [selectedCorner, setSelectedCorner] = useState("upperLeft");
+  const [selectedCorners, setSelectedCorners] = useState({
+    upperLeft: true,
+    upperRight: false,
+    lowerLeft: false,
+    lowerRight: false,
+  });
+  const [adjustmentSize, setAdjustmentSize] = useState(5); // Default pixels per adjustment
+  const [meshSize, setMeshSize] = useState(4); // Default mesh size
   const [selection, setSelection] = useState(null);
 
   useEffect(() => {
@@ -337,34 +344,46 @@ function Setup({
     }
   };
 
-  // Function to handle corner selection
+  // Function to handle corner selection checkboxes
   const handleCornerSelection = (corner) => {
-    setSelectedCorner(corner);
+    setSelectedCorners(prev => ({
+      ...prev,
+      [corner]: !prev[corner]
+    }));
   };
 
-  // Function to adjust the selected corner
-  const adjustCorner = (direction, amount = 5) => {
+  // Function to adjust the selected corners
+  const adjustCorners = (direction, amount = adjustmentSize) => {
     setCornerOffsets(prev => {
       const newOffsets = { ...prev };
-      if (direction === "up") {
-        newOffsets[selectedCorner].y -= amount;
-      } else if (direction === "down") {
-        newOffsets[selectedCorner].y += amount;
-      } else if (direction === "left") {
-        newOffsets[selectedCorner].x -= amount;
-      } else if (direction === "right") {
-        newOffsets[selectedCorner].x += amount;
+      for (const corner in selectedCorners) {
+        if (selectedCorners[corner]) {
+          if (direction === "up") {
+            newOffsets[corner].y -= amount;
+          } else if (direction === "down") {
+            newOffsets[corner].y += amount;
+          } else if (direction === "left") {
+            newOffsets[corner].x -= amount;
+          } else if (direction === "right") {
+            newOffsets[corner].x += amount;
+          }
+        }
       }
       return newOffsets;
     });
   };
 
-  // Function to reset the selected corner
-  const resetCorner = () => {
-    setCornerOffsets(prev => ({
-      ...prev,
-      [selectedCorner]: { x: 0, y: 0 }
-    }));
+  // Function to reset selected corners
+  const resetSelectedCorners = () => {
+    setCornerOffsets(prev => {
+      const newOffsets = { ...prev };
+      for (const corner in selectedCorners) {
+        if (selectedCorners[corner]) {
+          newOffsets[corner] = { x: 0, y: 0 };
+        }
+      }
+      return newOffsets;
+    });
   };
 
   // Function to reset all corners
@@ -388,6 +407,83 @@ function Setup({
     }
     
     return `${wholeFeet}' ${inches}"`;
+  };
+
+  // Update the renderCorrectionsPreview function to warp the rectangle and use blue
+  const renderCorrectionsPreview = () => {
+    if (!selection) return null;
+    
+    // Canvas dimensions for the preview
+    const previewWidth = 280;
+    const previewHeight = 180;
+    
+    // Calculate the base rectangle (16:9 area)
+    const aspectRatio = 16/9;
+    const baseWidth = previewWidth * 0.8;
+    const baseHeight = baseWidth / aspectRatio;
+    const baseX = (previewWidth - baseWidth) / 2;
+    const baseY = (previewHeight - baseHeight) / 2;
+    
+    // Calculate the distorted rectangle corners
+    const calcCorner = (baseX, baseY, offsetX, offsetY, scale = 1) => ({
+      x: baseX + (offsetX * scale),
+      y: baseY + (offsetY * scale)
+    });
+    
+    const scaleFactor = baseWidth / selection.width * 0.1;
+    
+    const distortedCorners = {
+      upperLeft: calcCorner(baseX, baseY, cornerOffsets.upperLeft.x, cornerOffsets.upperLeft.y, scaleFactor),
+      upperRight: calcCorner(baseX + baseWidth, baseY, cornerOffsets.upperRight.x, cornerOffsets.upperRight.y, scaleFactor),
+      lowerRight: calcCorner(baseX + baseWidth, baseY + baseHeight, cornerOffsets.lowerRight.x, cornerOffsets.lowerRight.y, scaleFactor),
+      lowerLeft: calcCorner(baseX, baseY + baseHeight, cornerOffsets.lowerLeft.x, cornerOffsets.lowerLeft.y, scaleFactor),
+    };
+    
+    return (
+      <div className="preview-canvas-container">
+        <svg width={previewWidth} height={previewHeight} className="preview-svg">
+          {/* Draw base rectangle */}
+          <rect
+            x={baseX}
+            y={baseY}
+            width={baseWidth}
+            height={baseHeight}
+            stroke="#aaaaaa"
+            strokeWidth={1}
+            fill="none"
+            strokeDasharray="5,5"
+          />
+          
+          {/* Draw distorted polygon */}
+          <polygon
+            points={`
+              ${distortedCorners.upperLeft.x},${distortedCorners.upperLeft.y} 
+              ${distortedCorners.upperRight.x},${distortedCorners.upperRight.y} 
+              ${distortedCorners.lowerRight.x},${distortedCorners.lowerRight.y} 
+              ${distortedCorners.lowerLeft.x},${distortedCorners.lowerLeft.y}
+            `}
+            stroke="#007bff"
+            strokeWidth={2}
+            fill="rgba(0, 123, 255, 0.1)"
+          />
+          
+          {/* Draw corner points */}
+          {Object.entries(distortedCorners).map(([key, {x, y}]) => (
+            <circle
+              key={key}
+              cx={x}
+              cy={y}
+              r={4}
+              fill={selectedCorners[key] ? "#dc3545" : "#007bff"}
+            />
+          ))}
+          
+          {/* Add labels */}
+          <text x={baseX} y={baseY - 10} fontSize="10" fill="#888">Original size</text>
+          <text x={baseX} y={baseHeight + baseY + 20} fontSize="10" fill="#007bff">Corrected output</text>
+        </svg>
+      </div>
+    );
   };
 
   return (
@@ -503,104 +599,87 @@ function Setup({
       {/* Corrections Tab */}
       <TabPanel value={activeTab} index={1}>
         <div className="corrections-tab">
-          <div className="corner-selection">
-            <h3>Select Corner to Adjust</h3>
-            <div className="corner-radio-group">
-              {["upperLeft", "upperRight", "lowerLeft", "lowerRight"].map((corner) => (
-                <label key={corner} className={`corner-radio ${selectedCorner === corner ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="corner"
-                    checked={selectedCorner === corner}
-                    onChange={() => handleCornerSelection(corner)}
-                  />
-                  <div className="corner-label">
-                    <div className="corner-icon"></div>
-                    <span>{corner.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  </div>
-                </label>
-              ))}
-            </div>
+          <div className="corrections-left-panel">
+            <h3>Corners & Adjustments</h3>
             
-            <div className="corner-visual">
-              <div className={`corner-diagram ${selectedCorner}`}>
-                <div className="corner-point upperLeft"></div>
-                <div className="corner-point upperRight"></div>
-                <div className="corner-point lowerLeft"></div>
-                <div className="corner-point lowerRight"></div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="adjustment-controls">
-            <h3>Adjust Corner Position</h3>
-            <div className="direction-controls">
-              <button onClick={() => adjustCorner("up")} className="direction-button up">↑</button>
-              <div className="horizontal-controls">
-                <button onClick={() => adjustCorner("left")} className="direction-button left">←</button>
-                <button onClick={() => adjustCorner("right")} className="direction-button right">→</button>
-              </div>
-              <button onClick={() => adjustCorner("down")} className="direction-button down">↓</button>
-            </div>
-            
-            <div className="offset-values">
-              <div className="offset-field">
-                <label>X Offset:</label>
-                <input 
-                  type="number" 
-                  value={cornerOffsets[selectedCorner]?.x || 0} 
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (!isNaN(val)) {
-                      setCornerOffsets(prev => ({
-                        ...prev,
-                        [selectedCorner]: { ...prev[selectedCorner], x: val }
-                      }));
-                    }
-                  }}
-                />
-              </div>
-              <div className="offset-field">
-                <label>Y Offset:</label>
-                <input 
-                  type="number" 
-                  value={cornerOffsets[selectedCorner]?.y || 0} 
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (!isNaN(val)) {
-                      setCornerOffsets(prev => ({
-                        ...prev,
-                        [selectedCorner]: { ...prev[selectedCorner], y: val }
-                      }));
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            
-            <div className="reset-buttons">
-              <button onClick={resetCorner} className="reset-corner-button">
-                Reset This Corner
-              </button>
-              <button onClick={resetAllCorners} className="reset-all-button">
-                Reset All Corners
-              </button>
-            </div>
-          </div>
-          
-          {/* Preview canvas to show effect of adjustments */}
-          <div className="preview-container">
-            <h3>Preview</h3>
-            <div className="canvas-preview">
+            <div className="preview-container">
               {imageDimensions.width > 0 ? (
-                <div className="preview-image">
-                  <div className="preview-note">The adjustments will be visible in the Display window.</div>
-                </div>
+                renderCorrectionsPreview()
               ) : (
                 <div className="no-image-preview">
                   <p>Load an image to see preview</p>
                 </div>
               )}
+            </div>
+            
+            <div className="direction-controls">
+              <button onClick={() => adjustCorners("up")} className="direction-button up">↑</button>
+              <div className="horizontal-controls">
+                <button onClick={() => adjustCorners("left")} className="direction-button left">←</button>
+                <button onClick={() => adjustCorners("right")} className="direction-button right">→</button>
+              </div>
+              <button onClick={() => adjustCorners("down")} className="direction-button down">↓</button>
+            </div>
+            
+            <div className="adjustment-sliders">
+              <div className="slider-control">
+                <label>Adjustment Size: <span className="slider-value">{adjustmentSize}px</span></label>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  value={adjustmentSize}
+                  onChange={(e) => setAdjustmentSize(parseInt(e.target.value))}
+                  className="range-slider"
+                />
+              </div>
+              
+              <div className="slider-control">
+                <label>Mesh Grid Size: <span className="slider-value">{meshSize}×{meshSize}</span></label>
+                <input
+                  type="range"
+                  min="2"
+                  max="10"
+                  value={meshSize}
+                  onChange={(e) => setMeshSize(parseInt(e.target.value))}
+                  className="range-slider"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="corrections-right-panel">
+            <h3>Corner Offsets</h3>
+            <div className="offsets-grid">
+              {Object.entries(cornerOffsets).map(([corner, { x, y }]) => (
+                <div 
+                  key={corner} 
+                  className={`offset-item ${selectedCorners[corner] ? 'selected' : ''}`}
+                  onClick={() => handleCornerSelection(corner)}
+                >
+                  <div className="offset-item-header">
+                    <span className="corner-name">{corner.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <div className="checkbox-indicator">
+                      <input
+                        type="checkbox"
+                        checked={selectedCorners[corner]}
+                        onChange={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  </div>
+                  <span className="offset-values">X: {x}, Y: {y}</span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="reset-buttons">
+              <button onClick={resetSelectedCorners} className="reset-corner-button">
+                Reset Selected Corners
+              </button>
+              <button onClick={resetAllCorners} className="reset-all-button">
+                Reset All Corners
+              </button>
             </div>
           </div>
         </div>
