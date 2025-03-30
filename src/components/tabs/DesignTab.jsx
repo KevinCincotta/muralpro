@@ -189,22 +189,17 @@ function DesignTab({
       const imgWidth = imgElement.width;
       const imgHeight = imgElement.height;
 
-      // Calculate a selection with margins
-      const margin = 20;
-      let rectWidth = imgWidth - 2 * margin;
-      let rectHeight = (rectWidth * 9) / 16;
-      
-      if (rectHeight > imgHeight - 2 * margin) {
-        rectHeight = imgHeight - 2 * margin;
-        rectWidth = (rectHeight * 16) / 9;
-      }
+      // Calculate a selection centered with a 5% margin
+      const margin = 0.05; // 5% margin
+      const rectWidth = imgWidth * (1 - 2 * margin);
+      const rectHeight = rectWidth / (16 / 9); // Maintain 16:9 aspect ratio
 
       const scaledRectWidth = rectWidth * scale;
       const scaledRectHeight = rectHeight * scale;
 
       const rect = new fabric.Rect({
-        left: margin * scale,
-        top: (scaledHeight - scaledRectHeight) - margin * scale,
+        left: (scaledWidth - scaledRectWidth) / 2,
+        top: (scaledHeight - scaledRectHeight) / 2,
         width: scaledRectWidth,
         height: scaledRectHeight,
         fill: "rgba(0, 0, 255, 0.2)",
@@ -213,62 +208,59 @@ function DesignTab({
         selectable: true,
         hasControls: true,
         lockUniScaling: true,
+        lockRotation: true, // Disable rotation
       });
 
-      rect.on("modified", () => {
+      const constrainRect = () => {
         const { left, top, width, scaleX } = rect;
-        const newWidth = width * scaleX;
-        const newHeight = (newWidth * 9) / 16;
-        rect.set({ height: newHeight / scaleX, scaleY: scaleX });
+        let newWidth = width * scaleX;
+        let newHeight = newWidth / (16 / 9); // Maintain 16:9 aspect ratio
+
+        // Constrain within image boundaries
+        const constrainedLeft = Math.max(0, Math.min(left, scaledWidth - newWidth));
+        const constrainedTop = Math.max(0, Math.min(top, scaledHeight - newHeight));
+
+        // Adjust width and height if they exceed boundaries
+        if (constrainedLeft + newWidth > scaledWidth) {
+          newWidth = scaledWidth - constrainedLeft;
+          newHeight = newWidth / (16 / 9);
+        }
+        if (constrainedTop + newHeight > scaledHeight) {
+          newHeight = scaledHeight - constrainedTop;
+          newWidth = newHeight * (16 / 9);
+        }
+
+        rect.set({
+          left: constrainedLeft,
+          top: constrainedTop,
+          width: newWidth,
+          height: newHeight,
+          scaleX: 1,
+          scaleY: 1,
+        });
         rect.setCoords();
 
         const newSelection = {
-          x: left / scale,
-          y: top / scale,
+          x: constrainedLeft / scale,
+          y: constrainedTop / scale,
           width: newWidth / scale,
           height: newHeight / scale,
         };
         setSelection(newSelection);
         onSelection(newSelection);
-      });
+      };
 
-      rect.on("moving", () => {
-        const { left, top, width, scaleX } = rect;
-        const newWidth = width * scaleX;
-        const newHeight = (newWidth * 9) / 16;
-
-        const newSelection = {
-          x: left / scale,
-          y: top / scale,
-          width: newWidth / scale,
-          height: newHeight / scale,
-        };
-        setSelection(newSelection);
-        onSelection(newSelection);
-      });
-
-      rect.on("scaling", () => {
-        const { left, top, width, scaleX } = rect;
-        const newWidth = width * scaleX;
-        const newHeight = (newWidth * 9) / 16;
-
-        const newSelection = {
-          x: left / scale,
-          y: top / scale,
-          width: newWidth / scale,
-          height: newHeight / scale,
-        };
-        setSelection(newSelection);
-        onSelection(newSelection);
-      });
+      rect.on("modified", constrainRect);
+      rect.on("moving", constrainRect);
+      rect.on("scaling", constrainRect);
 
       fabricCanvas.add(rect);
       fabricCanvas.setActiveObject(rect);
       fabricCanvas.renderAll();
 
       const initialSelection = {
-        x: margin,
-        y: imgHeight - rectHeight - margin,
+        x: imgWidth * margin,
+        y: imgHeight * margin,
         width: rectWidth,
         height: rectHeight,
       };
