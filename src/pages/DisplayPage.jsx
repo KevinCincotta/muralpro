@@ -52,6 +52,18 @@ function DisplayPage() {
       
       console.log("DisplayPage received update:", event.data);
       
+      // Add specific debugging for meshSize
+      if (newMeshSize !== undefined) {
+        console.log(`DisplayPage: Received mesh size update: ${newMeshSize} (type: ${typeof newMeshSize}), current: ${meshSize}`);
+        const parsedSize = parseInt(newMeshSize, 10);
+        if (!isNaN(parsedSize) && parsedSize !== meshSize) {
+          console.log(`DisplayPage: Updating mesh size from ${meshSize} to ${parsedSize}`);
+          setMeshSize(parsedSize);
+          // Force a redraw
+          setTimeout(renderCanvas, 0);
+        }
+      }
+      
       if (image) setImage(image);
       if (selection) setSelection(selection);
       if (wallWidthFeet) setWallWidthFeet(wallWidthFeet);
@@ -60,7 +72,7 @@ function DisplayPage() {
       if (showDesign !== undefined) setShowDesign(showDesign);
       if (showDebug !== undefined) setShowDebug(showDebug);
       if (cornerOffsets) setCornerOffsets(cornerOffsets);
-      if (newMeshSize) setMeshSize(newMeshSize);
+      if (newMeshSize !== undefined) setMeshSize(newMeshSize); // Use !== undefined to handle value 0
     };
     
     window.opener?.postMessage({
@@ -202,8 +214,13 @@ function DisplayPage() {
       // We could try using ctx.transform() for the whole image, but it would only 
       // give us a skewed rectangle, not a proper perspective transform.
 
-      // Use the dynamic meshSize instead of hardcoded value
-      const GRID_SIZE = meshSize;
+      // Log the actual mesh size being used with more details
+      console.log(`DisplayPage: Rendering with mesh size: ${meshSize} (type: ${typeof meshSize})`);
+      
+      // Ensure we use a valid mesh size value
+      const GRID_SIZE = Math.max(2, parseInt(meshSize, 10) || 4);
+      
+      // Use the dynamic meshSize value from state
       const cellWidth = selection.width / GRID_SIZE;
       const cellHeight = selection.height / GRID_SIZE;
 
@@ -438,7 +455,8 @@ function DisplayPage() {
     showDebug, 
     cornerOffsets,
     wallWidthFeet,
-    imageDimensions
+    imageDimensions,
+    meshSize // Add meshSize to the dependency array to re-render when it changes
   ]);
 
   return (

@@ -126,8 +126,12 @@ function MainContent() {
         showGrid,
         showDesign,
         showDebug,
-        cornerOffsets
+        cornerOffsets,
+        meshSize: parseInt(meshSize) || 4 // Ensure meshSize is a number
       });
+      
+      // Add debug logging to verify meshSize is being sent
+      console.log(`Broadcasting initial state with meshSize: ${meshSize} (type: ${typeof meshSize})`);
     }, 300); // Shorter delay for faster initial sync
   };
 
@@ -156,6 +160,35 @@ function MainContent() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setShowGrid, setShowDesign, setShowDebug]);
+
+  // Make sure meshSize changes get broadcast to the display window
+  useEffect(() => {
+    if (broadcastChannelRef.current && sessionId) {
+      broadcastChannelRef.current.postMessage({
+        meshSize
+      });
+    }
+  }, [meshSize, sessionId]);
+
+  // Force a state rebroadcast when mesh size changes
+  const handleMeshSizeChange = (newSize) => {
+    // Ensure newSize is a number
+    const numericSize = parseInt(newSize) || 4;
+    console.log(`App: Setting mesh size to ${numericSize}`);
+    
+    setMeshSize(numericSize);
+    
+    // Force a broadcast update to ensure DisplayPage receives it
+    setTimeout(() => {
+      if (displayWindowRef.current && !displayWindowRef.current.closed) {
+        console.log(`App: Broadcasting mesh size change: ${numericSize}`);
+        const channel = new BroadcastChannel(`muralpro-${sessionId}`);
+        channel.postMessage({
+          meshSize: numericSize
+        });
+      }
+    }, 0);
+  };
 
   return (
     <div>
@@ -192,7 +225,7 @@ function MainContent() {
         cornerOffsets={cornerOffsets}
         setCornerOffsets={setCornerOffsets}
         meshSize={meshSize}
-        setMeshSize={setMeshSize}
+        setMeshSize={handleMeshSizeChange} // Use the handler to ensure broadcasting
         openDisplayWindow={openDisplayWindow}
       />
     </div>

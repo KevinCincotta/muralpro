@@ -17,7 +17,9 @@ function Setup({
   setShowDebug, 
   cornerOffsets, 
   setCornerOffsets,
-  openDisplayWindow 
+  openDisplayWindow,
+  meshSize,
+  setMeshSize
 }) {
   const canvasRef = useRef(null);
   const fabricCanvasRef = useRef(null);
@@ -32,7 +34,6 @@ function Setup({
     lowerRight: false,
   });
   const [adjustmentSize, setAdjustmentSize] = useState(5); // Default pixels per adjustment
-  const [meshSize, setMeshSize] = useState(4); // Default mesh size
   const [selection, setSelection] = useState(null);
 
   useEffect(() => {
@@ -409,7 +410,15 @@ function Setup({
     return `${wholeFeet}' ${inches}"`;
   };
 
-  // Update the renderCorrectionsPreview function to warp the rectangle and use blue
+  // Update handleMeshSizeChange to directly use the prop function
+  const handleMeshSizeChange = (e) => {
+    const newMeshSize = parseInt(e.target.value);
+    console.log(`Mesh size changed to: ${newMeshSize}`);
+    // This directly calls the parent component's handler
+    setMeshSize(newMeshSize);
+  };
+
+  // Update the renderCorrectionsPreview function to properly warp the rectangle
   const renderCorrectionsPreview = () => {
     if (!selection) return null;
     
@@ -424,25 +433,33 @@ function Setup({
     const baseX = (previewWidth - baseWidth) / 2;
     const baseY = (previewHeight - baseHeight) / 2;
     
+    // This scale factor is used to translate corner offsets to preview size
+    const scaleFactor = baseWidth / selection.width * 0.3; // Increased from 0.1 to make effects more visible
+    
     // Calculate the distorted rectangle corners
-    const calcCorner = (baseX, baseY, offsetX, offsetY, scale = 1) => ({
-      x: baseX + (offsetX * scale),
-      y: baseY + (offsetY * scale)
-    });
-    
-    const scaleFactor = baseWidth / selection.width * 0.1;
-    
     const distortedCorners = {
-      upperLeft: calcCorner(baseX, baseY, cornerOffsets.upperLeft.x, cornerOffsets.upperLeft.y, scaleFactor),
-      upperRight: calcCorner(baseX + baseWidth, baseY, cornerOffsets.upperRight.x, cornerOffsets.upperRight.y, scaleFactor),
-      lowerRight: calcCorner(baseX + baseWidth, baseY + baseHeight, cornerOffsets.lowerRight.x, cornerOffsets.lowerRight.y, scaleFactor),
-      lowerLeft: calcCorner(baseX, baseY + baseHeight, cornerOffsets.lowerLeft.x, cornerOffsets.lowerLeft.y, scaleFactor),
+      upperLeft: { 
+        x: baseX + (cornerOffsets.upperLeft.x * scaleFactor),
+        y: baseY + (cornerOffsets.upperLeft.y * scaleFactor)
+      },
+      upperRight: { 
+        x: baseX + baseWidth + (cornerOffsets.upperRight.x * scaleFactor),
+        y: baseY + (cornerOffsets.upperRight.y * scaleFactor)
+      },
+      lowerRight: { 
+        x: baseX + baseWidth + (cornerOffsets.lowerRight.x * scaleFactor),
+        y: baseY + baseHeight + (cornerOffsets.lowerRight.y * scaleFactor)
+      },
+      lowerLeft: { 
+        x: baseX + (cornerOffsets.lowerLeft.x * scaleFactor),
+        y: baseY + baseHeight + (cornerOffsets.lowerLeft.y * scaleFactor)
+      }
     };
     
     return (
       <div className="preview-canvas-container">
         <svg width={previewWidth} height={previewHeight} className="preview-svg">
-          {/* Draw base rectangle */}
+          {/* Draw base rectangle (gray, dashed) */}
           <rect
             x={baseX}
             y={baseY}
@@ -454,7 +471,7 @@ function Setup({
             strokeDasharray="5,5"
           />
           
-          {/* Draw distorted polygon */}
+          {/* Draw distorted polygon (blue) */}
           <polygon
             points={`
               ${distortedCorners.upperLeft.x},${distortedCorners.upperLeft.y} 
@@ -467,7 +484,7 @@ function Setup({
             fill="rgba(0, 123, 255, 0.1)"
           />
           
-          {/* Draw corner points */}
+          {/* Draw corner points with different colors for selected corners */}
           {Object.entries(distortedCorners).map(([key, {x, y}]) => (
             <circle
               key={key}
@@ -481,6 +498,11 @@ function Setup({
           {/* Add labels */}
           <text x={baseX} y={baseY - 10} fontSize="10" fill="#888">Original size</text>
           <text x={baseX} y={baseHeight + baseY + 20} fontSize="10" fill="#007bff">Corrected output</text>
+          
+          {/* Add mesh size indicator */}
+          <text x={baseX + baseWidth - 60} y={baseHeight + baseY + 20} fontSize="10" fill="#555">
+            Mesh: {meshSize}×{meshSize}
+          </text>
         </svg>
       </div>
     );
@@ -639,9 +661,9 @@ function Setup({
                 <input
                   type="range"
                   min="2"
-                  max="10"
-                  value={meshSize}
-                  onChange={(e) => setMeshSize(parseInt(e.target.value))}
+                  max="100"
+                  value={meshSize} // Use the prop value directly
+                  onChange={handleMeshSizeChange}
                   className="range-slider"
                 />
               </div>
