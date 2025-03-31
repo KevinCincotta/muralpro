@@ -189,8 +189,8 @@ function DesignTab({
       const imgWidth = imgElement.width;
       const imgHeight = imgElement.height;
 
-      // Calculate a selection centered with a 5% margin
-      const margin = 0.05; // 5% margin
+      // Calculate a selection centered near the top with a 2% margin
+      const margin = 0.02; // 2% margin
       const rectWidth = imgWidth * (1 - 2 * margin);
       const rectHeight = rectWidth / (16 / 9); // Maintain 16:9 aspect ratio
 
@@ -199,7 +199,7 @@ function DesignTab({
 
       const rect = new fabric.Rect({
         left: (scaledWidth - scaledRectWidth) / 2,
-        top: (scaledHeight - scaledRectHeight) / 2,
+        top: scaledHeight * margin,
         width: scaledRectWidth,
         height: scaledRectHeight,
         fill: "rgba(0, 0, 255, 0.2)",
@@ -340,6 +340,80 @@ function DesignTab({
       canvas.renderAll();
     }
   });
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (!fabricCanvasRef.current) return;
+      const activeObject = fabricCanvasRef.current.getActiveObject();
+      if (!activeObject || activeObject.type !== "rect") return;
+
+      // Determine step size based on modifier keys
+      const step = event.shiftKey && event.altKey ? 100 : event.shiftKey ? 10 : 1;
+
+      const { left, top, width, height } = activeObject;
+      let newLeft = left;
+      let newTop = top;
+      let newWidth = width;
+      let newHeight = height;
+
+      // Normalize key for intuitive handling of +, -, =, and _
+      let key = event.key;
+      if (key === "=" || (key === "+" && event.shiftKey)) key = "+";
+      if (key === "-" || (key === "_" && event.shiftKey)) key = "-";
+
+      switch (key) {
+        case "ArrowRight":
+          newLeft = Math.min(left + step, fabricCanvasRef.current.getWidth() - width);
+          break;
+        case "ArrowLeft":
+          newLeft = Math.max(left - step, 0);
+          break;
+        case "ArrowDown":
+          newTop = Math.min(top + step, fabricCanvasRef.current.getHeight() - height);
+          break;
+        case "ArrowUp":
+          newTop = Math.max(top - step, 0);
+          break;
+        case "+":
+          newWidth = Math.max(width - step * 2, 1);
+          newHeight = newWidth / (16 / 9);
+          newLeft = Math.min(left + step, fabricCanvasRef.current.getWidth() - newWidth);
+          newTop = Math.min(top + step, fabricCanvasRef.current.getHeight() - newHeight);
+          break;
+        case "-":
+          newWidth = Math.min(width + step * 2, fabricCanvasRef.current.getWidth());
+          newHeight = newWidth / (16 / 9);
+          newLeft = Math.max(left - step, 0);
+          newTop = Math.max(top - step, 0);
+          break;
+        default:
+          return;
+      }
+
+      activeObject.set({
+        left: newLeft,
+        top: newTop,
+        width: newWidth,
+        height: newHeight,
+        scaleX: 1,
+        scaleY: 1,
+      });
+      activeObject.setCoords();
+      fabricCanvasRef.current.renderAll();
+
+      const newSelection = {
+        x: newLeft / scaleFactor,
+        y: newTop / scaleFactor,
+        width: newWidth / scaleFactor,
+        height: newHeight / scaleFactor,
+      };
+      setSelection(newSelection);
+      onSelection(newSelection);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [scaleFactor, onSelection]);
 
   return (
     <div className="design-tab">
