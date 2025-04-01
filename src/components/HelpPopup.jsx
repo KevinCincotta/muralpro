@@ -68,8 +68,7 @@ function HelpPopup({ isOpen, onClose }) {
                     <section className="help-section">
                         <h3>👋 Welcome to MuralPro</h3>
                         <p>
-                            MuralPro is a tool for for muralists to project and trace designs onto walls.
-                            It compensates for keystone distortion and helps you maintain proper proportions in your artwork.
+                            MuralPro helps muralists trace designs onto walls. It's especially useful when projecting different parts of your design onto different parts of the wall.
                         </p>
                     </section>
 
@@ -87,9 +86,9 @@ function HelpPopup({ isOpen, onClose }) {
                                 <strong>Best conditions</strong>: Project at night or in a darkened room for optimal visibility.
                             </li>
                             <li>
-                                <strong>Display setup</strong>:
+                                <strong>Display setup</strong>: use your projector as a second display.
                                 <ul className="sub-list">
-                                    <li><strong>Windows</strong>: Press Win+P and select "Extend" to use your projector as a second display.</li>
+                                    <li><strong>Windows</strong>: Press Win+P and select "Extend".</li>
                                     <li><strong>Mac</strong>: Go to System Preferences → Displays → Arrangement and enable "Extend display".</li>
                                 </ul>
                             </li>
@@ -104,37 +103,64 @@ function HelpPopup({ isOpen, onClose }) {
                     </section>
 
                     <section className="help-section">
-                        <h3>🖼️ Loading Your Design</h3>
+                        <h3>🖼️ Load Your Design</h3>
                         <ol>
-                            <li>Click or drag your design file to upload it.</li>
-                            <li>Select the specific region you wish to project by adjusting the blue rectangle.</li>
-                            <li>Enter the actual width of your wall in feet (for accurate grid scaling).</li>
-                            <li>Click the green "Project" button to open a display window.</li>
+                            <li>Click or drag/drop your design file to upload it.</li>
+                            <li>Drag the corners of the blue rectangle to select the portion of the design you wish to project.</li>
+                            <li>
+                                Fine-tune the size and position of the selection using keyboard shortcuts:
+                                <ul className="sub-list">
+                                    <li><strong>Arrow Keys:</strong> Nudge the rectangle in the specified direction.</li>
+                                    <li><strong>Plus Key (+)</strong> Zoom in by pulling the upper corners down and in.</li>
+                                    <li><strong>Minus Key (-)</strong> Zoom out by pushing the upper corners up and out.</li>
+                                    <li>You can make small, medium or large adjustments:</li>
+                                    <ul>
+                                        <li>By default, the shortcut keys make small 1px adjustments</li>
+                                        <li>Hold the <strong>Shift</strong> key for medium 10px adjustments</li>
+                                        <li>Hold the <strong>Shift + Option</strong> keys for large 100px adjustments</li>
+                                    </ul>
+                                </ul>
+                            </li>
                         </ol>
                     </section>
 
                     <section className="help-section">
-                        <h3>📐 Adjusting the Projection</h3>
+                        <h3>🎥 Project Your Design</h3>
                         <ol>
+                            <li>Click the green "Project" button to open a display window.</li>
                             <li>
-                                Position the display window on your projector's screen:
+                                Position the display window on your projector then make it full-screen:
                                 <ul className="sub-list">
-                                    <li><strong>Windows:</strong> Drag the projection window to your secondary display (projector), then press F11 to make it full-screen, or click the maximize button in the top-right corner.</li>
-                                    <li><strong>Mac:</strong> Drag the projection window to your projector display, then click the green circle in the top-left corner to enter full-screen mode, or use Control+Command+F.</li>
+                                    <li><strong>Windows:</strong> Press <strong>F11</strong>.</li>
+                                    <li><strong>Mac:</strong> Click the green circle in the top-left corner or press <strong>Control&nbsp;+&nbsp;Command&nbsp;+&nbsp;F</strong>.</li>
                                 </ul>
                             </li>
                             <li>Physically position your projector to get approximate alignment.</li>
-                            <li>Press "G" to toggle the grid on/off.</li>
-                            <li>Press "D" to toggle the design off to focus on grid adjustments.</li>
-                            <li>Switch to the Corrections tab to fix any keystone distortion.</li>
-                            <li>Use the arrow buttons to adjust each corner until grid lines appear parallel.</li>
+                            <li>Use the focus and geometry correction functions on your project to get the image clear and rectangular.</li>
                         </ol>
                     </section>
+
+                    <section className="help-section">
+                        <h3>📐 Fine-tune Your Projected Image</h3>
+                        <ol>
+                            <li>Toggle layers to ensure all the grid lines are square and even</li>
+                            <ul>
+                                <li>Press <strong>G</strong> to toggle the grid off/on.</li>
+                                <li>Press <strong>D</strong> to toggle the design off/on.</li>
+                            </ul>
+                            <li>If you need more geometry correction...</li>
+                            <ul>
+                                <li>Switch to the <strong>Corrections</strong> tab to fix any keystone distortion.</li>
+                                <li>Use the <strong>arrow buttons</strong> to adjust each corner until grid lines appear parallel.</li>
+
+                            </ul>
+                        </ol>
+                    </section>
+
 
                     <section className="help-section">
                         <h3>💡 Tips</h3>
                         <ul>
-                            <li>Use larger adjustment steps (100px) for coarse adjustments, then smaller values for fine-tuning.</li>
                             <li>Aim for square grid cells that are approximately 1 foot apart on your wall.</li>
                             <li>You can adjust the Wall Width on the design tab to adjust the spacing of gridlines.</li>
                             <li>For multi-section murals, consider marking key grid intersections on your wall to help with aligning the sections.</li>
